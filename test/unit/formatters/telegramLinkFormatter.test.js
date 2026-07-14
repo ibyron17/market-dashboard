@@ -18,6 +18,14 @@ test('includes the dashboard url and an all-clear status when everything succeed
   assert.match(message, /모든 데이터가 정상적으로 수집/);
 });
 
+test('appends a cache-busting query parameter so the link is unique per run', () => {
+  const sections = { usMarket: { status: 'ok' } };
+
+  const message = formatDashboardLinkMessage(sections, url);
+
+  assert.match(message, /\?v=\d+/);
+});
+
 test('mentions the number of failed sections when some fail', () => {
   const sections = {
     usMarket: { status: 'ok' },
