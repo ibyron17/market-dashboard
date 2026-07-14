@@ -1,0 +1,21 @@
+{
+  "name": "market-dashboard",
+  "version": "1.0.0",
+  "description": "매일 오전 9시(KST) 미국/국내 증시 현황과 외국인 동향, Claude 인사이트를 텔레그램으로 알려주는 자동화 시스템",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "report:local": "node scripts/runLocal.js",
+    "test": "node --test",
+    "lint": "find src scripts -name '*.js' -exec node --check {} +"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.48.0"
+  }
+}
