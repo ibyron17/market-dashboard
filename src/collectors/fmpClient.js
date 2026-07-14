@@ -1,7 +1,8 @@
 const axios = require('axios');
 const { withRetry } = require('../utils/retry');
 
-const BASE_URL = 'https://financialmodelingprep.com/api/v3';
+// /api/v3 is legacy and returns 403 for accounts created after 2025-08-31; use /stable instead.
+const BASE_URL = 'https://financialmodelingprep.com/stable';
 
 async function fetchFmp(path, params = {}, { apiKey, timeoutMs = 10000 } = {}) {
   return withRetry(async () => {
