@@ -37,13 +37,28 @@ test('buildInsightPrompt forbids buy/sell recommendations and requires the discl
   assert.match(prompt, /참고용 정보이며 투자 판단과 책임은 본인에게 있습니다/);
 });
 
-test('buildInsightPrompt includes watchlist data when present', () => {
+test('buildInsightPrompt includes VIX and Fed funds rate data when present', () => {
   const sections = {
-    watchlist: { status: 'ok', data: { companies: [{ symbol: 'AAPL', price: 200 }] } },
+    vix: { status: 'ok', data: { price: 18.4 } },
+    fedFunds: { status: 'ok', data: { rate: 3.63 } },
   };
 
   const prompt = buildInsightPrompt(sections);
 
-  assert.match(prompt, /AAPL/);
+  assert.match(prompt, /VIX\(변동성지수\): .*18\.4/);
+  assert.match(prompt, /미국 기준금리: .*3\.63/);
+});
+
+test('buildInsightPrompt includes watchlist data when present', () => {
+  const sections = {
+    watchlist: {
+      status: 'ok',
+      data: { themes: [{ key: 'semiconductor', label: '반도체', companies: [{ symbol: 'NVDA', price: 130 }] }] },
+    },
+  };
+
+  const prompt = buildInsightPrompt(sections);
+
+  assert.match(prompt, /NVDA/);
   assert.match(prompt, /관심 기업 동향/);
 });

@@ -12,8 +12,10 @@ function describeSection(title, section) {
 function buildInsightPrompt(sections) {
   const lines = [
     describeSection('미국 증시', sections.usMarket),
+    describeSection('VIX(변동성지수)', sections.vix),
     describeSection('국내 증시', sections.krMarket),
     describeSection('외국인·기관 동향', sections.foreignFlow),
+    describeSection('미국 기준금리', sections.fedFunds),
     describeSection('10년물 국채금리', sections.treasury),
     describeSection('관심 기업 동향', sections.watchlist),
   ];

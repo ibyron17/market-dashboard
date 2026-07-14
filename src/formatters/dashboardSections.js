@@ -17,6 +17,35 @@ function renderStatusCard(title, hint, section, renderBody) {
   return renderCard(title, hint, renderBody(section.data));
 }
 
+// A real <table> (rather than a flex/space-between list) so that the label/value/change
+// columns line up vertically across rows regardless of how long each row's text is.
+function renderTable(rows) {
+  return `
+        <table class="data-table">
+          <tbody>
+            ${rows
+              .map(
+                (cells) => `
+            <tr>
+              ${cells.map((cell) => `<td class="${cell.className || ''}">${cell.html}</td>`).join('')}
+            </tr>`,
+              )
+              .join('')}
+          </tbody>
+        </table>`;
+}
+
+function indexRow(label, price, changesPercentage) {
+  return [
+    { className: 'label', html: escapeHtml(label) },
+    { className: 'value', html: price != null ? escapeHtml(price) : '데이터 없음' },
+    {
+      className: `change ${changeClass(changesPercentage)}`,
+      html: `${escapeHtml(changeLabel(changesPercentage))}${changesPercentage != null ? ` (${escapeHtml(changesPercentage)}%)` : ''}`,
+    },
+  ];
+}
+
 function renderDisclaimer() {
   return `
       <div class="disclaimer">
@@ -59,7 +88,7 @@ function renderSummary(sections) {
       <section class="card summary">
         <h2>📌 오늘의 요약</h2>
         <p>${escapeHtml(mood)}</p>
-        <p class="hint">처음이신가요? 이 순서로 읽어보세요: ① 오늘의 요약 → ② 미국·국내 증시 → ③ 외국인·기관 동향 → ④ 관심 기업 → ⑤ AI 인사이트</p>
+        <p class="hint">처음이신가요? 맨 위 AI 인사이트로 오늘 분위기를 먼저 파악한 뒤, 이 순서로 근거를 확인해보세요: ① 오늘의 요약 → ② 미국·국내 증시 → ③ 외국인·기관 동향 → ④ 관심 기업</p>
       </section>`;
 }
 
@@ -68,22 +97,48 @@ function renderUsMarket(section) {
     '🇺🇸 미국 증시',
     GLOSSARY.usMarket,
     section,
+    (data) =>
+      renderTable(data.indices.map((index) => indexRow(index.label, index.price, index.changesPercentage))),
+  );
+}
+
+function vixInterpretation(price) {
+  const numeric = Number(String(price).replace(/,/g, ''));
+  if (Number.isNaN(numeric)) return '';
+  return numeric >= 20
+    ? '20 이상이라 시장이 다소 불안하다는 신호로 흔히 해석돼요.'
+    : '20 미만이라 비교적 차분한 시장 분위기로 흔히 해석돼요.';
+}
+
+function renderVix(section) {
+  return renderStatusCard(
+    '😨 VIX (변동성지수)',
+    GLOSSARY.vix,
+    section,
     (data) => `
-        <ul class="index-list">
-          ${data.indices
-            .map(
-              (index) => `
-          <li>
-            <span class="label">${escapeHtml(index.label)}</span>
-            <span class="value">${index.price != null ? escapeHtml(index.price) : '데이터 없음'}</span>
-            <span class="change ${changeClass(index.changesPercentage)}">
-              ${escapeHtml(changeLabel(index.changesPercentage))}
-              ${index.changesPercentage != null ? `(${escapeHtml(index.changesPercentage)}%)` : ''}
-            </span>
-          </li>`,
-            )
-            .join('')}
-        </ul>`,
+        <p class="treasury-value">${data.price != null ? escapeHtml(data.price) : '데이터 없음'}</p>
+        <p class="change ${changeClass(data.changesPercentage)}">
+          ${escapeHtml(changeLabel(data.changesPercentage))}
+          ${data.changesPercentage != null ? `(${escapeHtml(data.changesPercentage)}%)` : ''}
+        </p>
+        ${data.price != null ? `<p class="hint" style="margin:0.5rem 0 0">${escapeHtml(vixInterpretation(data.price))}</p>` : ''}`,
+  );
+}
+
+function renderFedFundsRate(section) {
+  return renderStatusCard(
+    '🏦 미국 기준금리',
+    GLOSSARY.fedFunds,
+    section,
+    (data) => `
+        <p class="treasury-value">${data.rate != null ? `${escapeHtml(data.rate)}%` : '데이터 없음'}</p>
+        <p class="treasury-date">${data.date ? escapeHtml(data.date) : ''}</p>
+        ${
+          Array.isArray(data.history) && data.history.length > 1
+            ? `<div class="rate-chart-wrap"><canvas id="fedFundsChart" height="90"></canvas></div>
+        <script type="application/json" id="fedFundsChartData">${JSON.stringify(data.history).replace(/</g, '\\u003c')}</script>`
+            : ''
+        }`,
   );
 }
 
@@ -92,19 +147,25 @@ function renderKrMarket(section) {
     '🇰🇷 국내 증시',
     GLOSSARY.krMarket,
     section,
-    (data) => `
-        <ul class="index-list">
-          <li>
-            <span class="label">코스피</span>
-            <span class="value">${escapeHtml(data.kospi.value)}</span>
-            <span class="change ${changeClass(data.kospi.change)}">${escapeHtml(changeLabel(data.kospi.change))} (${escapeHtml(data.kospi.change)})</span>
-          </li>
-          <li>
-            <span class="label">코스닥</span>
-            <span class="value">${escapeHtml(data.kosdaq.value)}</span>
-            <span class="change ${changeClass(data.kosdaq.change)}">${escapeHtml(changeLabel(data.kosdaq.change))} (${escapeHtml(data.kosdaq.change)})</span>
-          </li>
-        </ul>`,
+    (data) =>
+      renderTable([
+        [
+          { className: 'label', html: '코스피' },
+          { className: 'value', html: escapeHtml(data.kospi.value) },
+          {
+            className: `change ${changeClass(data.kospi.change)}`,
+            html: `${escapeHtml(changeLabel(data.kospi.change))} (${escapeHtml(data.kospi.change)})`,
+          },
+        ],
+        [
+          { className: 'label', html: '코스닥' },
+          { className: 'value', html: escapeHtml(data.kosdaq.value) },
+          {
+            className: `change ${changeClass(data.kosdaq.change)}`,
+            html: `${escapeHtml(changeLabel(data.kosdaq.change))} (${escapeHtml(data.kosdaq.change)})`,
+          },
+        ],
+      ]),
   );
 }
 
@@ -113,21 +174,23 @@ function renderForeignFlow(section) {
     '💱 외국인·기관 동향',
     GLOSSARY.foreignFlow,
     section,
-    (data) => `
-        <ul class="index-list">
-          <li>
-            <span class="label">외국인 순매수</span>
-            <span class="value ${changeClass(data.foreignNetBuy)}">${
-              data.foreignNetBuy ? escapeHtml(data.foreignNetBuy) : '데이터 없음'
-            }</span>
-          </li>
-          <li>
-            <span class="label">기관 순매수</span>
-            <span class="value ${changeClass(data.institutionNetBuy)}">${
-              data.institutionNetBuy ? escapeHtml(data.institutionNetBuy) : '데이터 없음'
-            }</span>
-          </li>
-        </ul>`,
+    (data) =>
+      renderTable([
+        [
+          { className: 'label', html: '외국인 순매수' },
+          {
+            className: `value ${changeClass(data.foreignNetBuy)}`,
+            html: data.foreignNetBuy ? escapeHtml(data.foreignNetBuy) : '데이터 없음',
+          },
+        ],
+        [
+          { className: 'label', html: '기관 순매수' },
+          {
+            className: `value ${changeClass(data.institutionNetBuy)}`,
+            html: data.institutionNetBuy ? escapeHtml(data.institutionNetBuy) : '데이터 없음',
+          },
+        ],
+      ]),
   );
 }
 
@@ -148,21 +211,26 @@ function renderWatchlist(section) {
     GLOSSARY.watchlist,
     section,
     (data) => `
-        <ul class="index-list">
-          ${data.companies
+        <div class="tabs" role="tablist" aria-label="관심 기업 테마">
+          ${data.themes
             .map(
-              (company) => `
-          <li>
-            <span class="label">${escapeHtml(company.label)} (${escapeHtml(company.symbol)})</span>
-            <span class="value">${company.price != null ? escapeHtml(company.price) : '데이터 없음'}</span>
-            <span class="change ${changeClass(company.changesPercentage)}">
-              ${escapeHtml(changeLabel(company.changesPercentage))}
-              ${company.changesPercentage != null ? `(${escapeHtml(company.changesPercentage)}%)` : ''}
-            </span>
-          </li>`,
+              (theme, i) => `
+          <button type="button" class="tab-btn${i === 0 ? ' active' : ''}" role="tab" aria-selected="${i === 0}" data-tab-target="watchlist-${escapeHtml(theme.key)}">${escapeHtml(theme.label)}</button>`,
             )
             .join('')}
-        </ul>`,
+        </div>
+        ${data.themes
+          .map(
+            (theme, i) => `
+        <div class="tab-panel" id="watchlist-${escapeHtml(theme.key)}" role="tabpanel" ${i === 0 ? '' : 'hidden'}>
+          ${renderTable(
+            theme.companies.map((company) =>
+              indexRow(`${company.label} (${company.symbol})`, company.price, company.changesPercentage),
+            ),
+          )}
+        </div>`,
+          )
+          .join('')}`,
   );
 }
 
@@ -186,8 +254,10 @@ module.exports = {
   renderDisclaimer,
   renderSummary,
   renderUsMarket,
+  renderVix,
   renderKrMarket,
   renderForeignFlow,
+  renderFedFundsRate,
   renderTreasury,
   renderWatchlist,
   renderInsight,

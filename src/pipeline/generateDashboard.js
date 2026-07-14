@@ -4,6 +4,8 @@ const { scrapeForeignFlow } = require('../scrapers/foreignFlowScraper');
 const { collectUsMarket } = require('../collectors/usMarketCollector');
 const { collectTreasuryYield } = require('../collectors/treasuryCollector');
 const { collectWatchlist } = require('../collectors/watchlistCollector');
+const { collectVix } = require('../collectors/vixCollector');
+const { collectFedFundsRate } = require('../collectors/fedFundsCollector');
 const { generateInsight } = require('../analysis/claudeInsightGenerator');
 const { formatDashboardHtml } = require('../formatters/dashboardFormatter');
 const { formatDashboardLinkMessage } = require('../formatters/telegramLinkFormatter');
@@ -39,6 +41,8 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
     collectTreasuryYieldFn = collectTreasuryYield,
     collectKrDataFn = collectKrData,
     collectWatchlistFn = collectWatchlist,
+    collectVixFn = collectVix,
+    collectFedFundsRateFn = collectFedFundsRate,
     generateInsightFn = generateInsight,
     formatDashboardHtmlFn = formatDashboardHtml,
     formatDashboardLinkMessageFn = formatDashboardLinkMessage,
@@ -47,11 +51,13 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
   } = deps;
 
   try {
-    const [usMarket, treasury, krData, watchlist] = await Promise.all([
+    const [usMarket, treasury, krData, watchlist, vix, fedFunds] = await Promise.all([
       collectUsMarketFn(config),
       collectTreasuryYieldFn(config),
       collectKrDataFn(),
       collectWatchlistFn(config),
+      collectVixFn(config),
+      collectFedFundsRateFn(config),
     ]);
 
     const sections = {
@@ -60,6 +66,8 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
       krMarket: krData.krMarket,
       foreignFlow: krData.foreignFlow,
       watchlist,
+      vix,
+      fedFunds,
     };
 
     const insight = await generateInsightFn(sections, config);
