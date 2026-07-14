@@ -1,106 +1,14 @@
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function changeClass(value) {
-  if (value == null) return '';
-  const numeric = Number(String(value).replace(/,/g, ''));
-  if (Number.isNaN(numeric)) return '';
-  return numeric > 0 ? 'up' : numeric < 0 ? 'down' : '';
-}
-
-function renderStatusCard(title, section, renderBody) {
-  if (!section || section.status !== 'ok') {
-    return `
-      <section class="card">
-        <h2>${escapeHtml(title)}</h2>
-        <p class="warning">⚠️ 데이터를 가져오지 못했습니다.</p>
-      </section>`;
-  }
-  return `
-      <section class="card">
-        <h2>${escapeHtml(title)}</h2>
-        ${renderBody(section.data)}
-      </section>`;
-}
-
-function renderUsMarket(section) {
-  return renderStatusCard('🇺🇸 미국 증시', section, (data) => `
-        <ul class="index-list">
-          ${data.indices
-            .map(
-              (index) => `
-          <li>
-            <span class="label">${escapeHtml(index.label)}</span>
-            <span class="value">${index.price != null ? escapeHtml(index.price) : '데이터 없음'}</span>
-            <span class="change ${changeClass(index.changesPercentage)}">${
-                index.changesPercentage != null ? `${escapeHtml(index.changesPercentage)}%` : ''
-              }</span>
-          </li>`,
-            )
-            .join('')}
-        </ul>`);
-}
-
-function renderKrMarket(section) {
-  return renderStatusCard('🇰🇷 국내 증시', section, (data) => `
-        <ul class="index-list">
-          <li>
-            <span class="label">코스피</span>
-            <span class="value">${escapeHtml(data.kospi.value)}</span>
-            <span class="change ${changeClass(data.kospi.change)}">${escapeHtml(data.kospi.change)}</span>
-          </li>
-          <li>
-            <span class="label">코스닥</span>
-            <span class="value">${escapeHtml(data.kosdaq.value)}</span>
-            <span class="change ${changeClass(data.kosdaq.change)}">${escapeHtml(data.kosdaq.change)}</span>
-          </li>
-        </ul>`);
-}
-
-function renderForeignFlow(section) {
-  return renderStatusCard('💱 외국인·기관 동향', section, (data) => `
-        <ul class="index-list">
-          <li>
-            <span class="label">외국인 순매수</span>
-            <span class="value ${changeClass(data.foreignNetBuy)}">${
-              data.foreignNetBuy ? escapeHtml(data.foreignNetBuy) : '데이터 없음'
-            }</span>
-          </li>
-          <li>
-            <span class="label">기관 순매수</span>
-            <span class="value ${changeClass(data.institutionNetBuy)}">${
-              data.institutionNetBuy ? escapeHtml(data.institutionNetBuy) : '데이터 없음'
-            }</span>
-          </li>
-        </ul>`);
-}
-
-function renderTreasury(section) {
-  return renderStatusCard('💵 10년물 국채금리', section, (data) => `
-        <p class="treasury-value">${data.yieldPercent != null ? `${escapeHtml(data.yieldPercent)}%` : '데이터 없음'}</p>
-        <p class="treasury-date">${data.date ? escapeHtml(data.date) : ''}</p>`);
-}
-
-function renderInsight(section) {
-  if (!section || section.status !== 'ok') {
-    return `
-      <section class="card insight">
-        <h2>🤖 Claude 인사이트</h2>
-        <p class="warning">⚠️ 인사이트를 생성하지 못했습니다.</p>
-      </section>`;
-  }
-  return `
-      <section class="card insight">
-        <h2>🤖 Claude 인사이트</h2>
-        <p>${escapeHtml(section.data.text)}</p>
-      </section>`;
-}
+const { escapeHtml } = require('../utils/htmlEscape');
+const {
+  renderDisclaimer,
+  renderSummary,
+  renderUsMarket,
+  renderKrMarket,
+  renderForeignFlow,
+  renderTreasury,
+  renderWatchlist,
+  renderInsight,
+} = require('./dashboardSections');
 
 function formatDashboardHtml(sections) {
   const today = new Date().toISOString().slice(0, 10);
@@ -135,7 +43,19 @@ function formatDashboardHtml(sections) {
     padding: 1.25rem 1.5rem;
     margin-bottom: 1rem;
   }
-  .card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+  .card h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .hint { color: #8a8f98; font-size: 0.85rem; margin: 0 0 0.75rem; line-height: 1.5; }
+  .disclaimer {
+    background: #2a1f0f;
+    border: 1px solid #6b4e16;
+    color: #fbbf24;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .summary p:first-of-type { font-size: 1.05rem; font-weight: 600; }
   .index-list { list-style: none; margin: 0; padding: 0; }
   .index-list li {
     display: flex;
@@ -153,22 +73,26 @@ function formatDashboardHtml(sections) {
   .warning { color: #fbbf24; margin: 0; }
   .treasury-value { font-size: 1.4rem; font-weight: 700; margin: 0; }
   .treasury-date { color: #8a8f98; font-size: 0.85rem; margin: 0.25rem 0 0; }
-  .insight p { line-height: 1.6; margin: 0; }
+  .insight p { line-height: 1.6; margin: 0 0 0.5rem; }
 </style>
 </head>
 <body>
 <main>
+  ${renderDisclaimer()}
   <h1>📊 ${escapeHtml(today)} 데일리 마켓 리포트</h1>
   <p class="generated-at">생성 시각: ${escapeHtml(generatedAt)}</p>
+  ${renderSummary(sections)}
   ${renderUsMarket(sections.usMarket)}
   ${renderKrMarket(sections.krMarket)}
   ${renderForeignFlow(sections.foreignFlow)}
   ${renderTreasury(sections.treasury)}
+  ${renderWatchlist(sections.watchlist)}
   ${renderInsight(sections.insight)}
+  ${renderDisclaimer()}
 </main>
 </body>
 </html>
 `;
 }
 
-module.exports = { formatDashboardHtml, escapeHtml };
+module.exports = { formatDashboardHtml };

@@ -6,6 +6,16 @@ const US_INDEX_TICKERS = Object.freeze([
   { symbol: '^DJI', label: '다우존스 산업평균지수' },
 ]);
 
+// 개별 /stable/quote 호출로 조회 가능함이 이미 검증된 대형 기술기업 5곳 (US_INDEX_TICKERS와 동일 패턴).
+// 배치(콤마 구분) 조회는 FMP 무료 티어에서 프리미엄으로 막혀 있으므로 반드시 개별 호출을 유지한다.
+const WATCHLIST_TICKERS = Object.freeze([
+  { symbol: 'AAPL', label: '애플' },
+  { symbol: 'MSFT', label: '마이크로소프트' },
+  { symbol: 'NVDA', label: '엔비디아' },
+  { symbol: 'AMZN', label: '아마존' },
+  { symbol: 'GOOGL', label: '알파벳(구글)' },
+]);
+
 const ALPHA_VANTAGE_RATE_LIMIT = Object.freeze({
   maxPerWindow: 5,
   windowMs: 60 * 1000,
@@ -38,6 +48,7 @@ const TELEGRAM_MESSAGE_OUTPUT_PATH = 'artifacts/telegram-message.txt';
 
 module.exports = {
   US_INDEX_TICKERS,
+  WATCHLIST_TICKERS,
   ALPHA_VANTAGE_RATE_LIMIT,
   NAVER_MARKET_URL,
   NAVER_FOREIGN_FLOW_URL,

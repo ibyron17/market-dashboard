@@ -3,6 +3,7 @@ const { scrapeKrMarket } = require('../scrapers/naverMarketScraper');
 const { scrapeForeignFlow } = require('../scrapers/foreignFlowScraper');
 const { collectUsMarket } = require('../collectors/usMarketCollector');
 const { collectTreasuryYield } = require('../collectors/treasuryCollector');
+const { collectWatchlist } = require('../collectors/watchlistCollector');
 const { generateInsight } = require('../analysis/claudeInsightGenerator');
 const { formatDashboardHtml } = require('../formatters/dashboardFormatter');
 const { formatDashboardLinkMessage } = require('../formatters/telegramLinkFormatter');
@@ -37,6 +38,7 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
     collectUsMarketFn = collectUsMarket,
     collectTreasuryYieldFn = collectTreasuryYield,
     collectKrDataFn = collectKrData,
+    collectWatchlistFn = collectWatchlist,
     generateInsightFn = generateInsight,
     formatDashboardHtmlFn = formatDashboardHtml,
     formatDashboardLinkMessageFn = formatDashboardLinkMessage,
@@ -45,10 +47,11 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
   } = deps;
 
   try {
-    const [usMarket, treasury, krData] = await Promise.all([
+    const [usMarket, treasury, krData, watchlist] = await Promise.all([
       collectUsMarketFn(config),
       collectTreasuryYieldFn(config),
       collectKrDataFn(),
+      collectWatchlistFn(config),
     ]);
 
     const sections = {
@@ -56,6 +59,7 @@ async function generateDashboard(config = loadConfig(), deps = {}) {
       treasury,
       krMarket: krData.krMarket,
       foreignFlow: krData.foreignFlow,
+      watchlist,
     };
 
     const insight = await generateInsightFn(sections, config);
