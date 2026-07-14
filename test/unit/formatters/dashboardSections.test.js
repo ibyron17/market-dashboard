@@ -4,6 +4,8 @@ const {
   renderDisclaimer,
   renderSummary,
   renderUsMarket,
+  renderVix,
+  renderFedFundsRate,
   renderWatchlist,
   renderInsight,
 } = require('../../../src/formatters/dashboardSections');
@@ -51,14 +53,74 @@ test('renderUsMarket shows a beginner-friendly hint and interpretation label', (
   assert.match(html, /▲ 상승/);
 });
 
-test('renderWatchlist never suggests buying or selling a specific company', () => {
+test('renderVix shows a beginner-friendly interpretation of the fear-gauge level', () => {
+  const highFear = renderVix({ status: 'ok', data: { price: 24.5, changesPercentage: 3.1 } });
+  assert.match(highFear, /24\.5/);
+  assert.match(highFear, /다소 불안하다는 신호/);
+
+  const calm = renderVix({ status: 'ok', data: { price: 13.2, changesPercentage: -1.4 } });
+  assert.match(calm, /차분한 시장 분위기/);
+});
+
+test('renderVix shows a warning card when the section failed', () => {
+  const html = renderVix({ status: 'error', error: 'timeout' });
+  assert.match(html, /데이터를 가져오지 못했습니다/);
+});
+
+test('renderFedFundsRate shows the latest rate and embeds chart data when history exists', () => {
   const section = {
     status: 'ok',
-    data: { companies: [{ label: '애플', symbol: 'AAPL', price: 200, changesPercentage: 0.8 }] },
+    data: {
+      rate: 3.63,
+      date: '2026-06-01',
+      history: [
+        { date: '2026-05-01', value: 3.63 },
+        { date: '2026-06-01', value: 3.63 },
+      ],
+    },
   };
-  const html = renderWatchlist(section);
-  assert.match(html, /애플/);
+  const html = renderFedFundsRate(section);
+  assert.match(html, /3\.63%/);
+  assert.match(html, /id="fedFundsChart"/);
+  assert.match(html, /id="fedFundsChartData"/);
+});
+
+test('renderFedFundsRate omits the chart markup when there is no history', () => {
+  const html = renderFedFundsRate({ status: 'ok', data: { rate: 3.63, date: '2026-06-01', history: [] } });
+  assert.ok(!html.includes('fedFundsChart'));
+});
+
+const WATCHLIST_SECTION = {
+  status: 'ok',
+  data: {
+    themes: [
+      {
+        key: 'semiconductor',
+        label: '반도체',
+        companies: [{ label: '엔비디아', symbol: 'NVDA', price: 130, changesPercentage: 2.1 }],
+      },
+      {
+        key: 'power',
+        label: '전력',
+        companies: [{ label: '넥스트에라 에너지', symbol: 'NEE', price: 72, changesPercentage: 0.2 }],
+      },
+    ],
+  },
+};
+
+test('renderWatchlist never suggests buying or selling a specific company', () => {
+  const html = renderWatchlist(WATCHLIST_SECTION);
+  assert.match(html, /엔비디아/);
   assert.ok(!/매수|매도|사세요|파세요/.test(html));
+});
+
+test('renderWatchlist renders a tab button and panel per theme, with only the first panel visible', () => {
+  const html = renderWatchlist(WATCHLIST_SECTION);
+
+  assert.match(html, /class="tab-btn active"[^>]*data-tab-target="watchlist-semiconductor"/);
+  assert.match(html, /class="tab-btn"[^>]*data-tab-target="watchlist-power"/);
+  assert.match(html, /id="watchlist-semiconductor"[^>]*role="tabpanel"\s*>/);
+  assert.match(html, /id="watchlist-power"[^>]*role="tabpanel" hidden>/);
 });
 
 test('renderWatchlist shows a warning card when the section failed', () => {

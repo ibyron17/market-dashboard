@@ -23,6 +23,12 @@ function buildDeps(overrides = {}) {
       },
     }),
     collectWatchlistFn: async () => ({ status: 'ok', source: 'fmp-watchlist', data: { companies: [] } }),
+    collectVixFn: async () => ({ status: 'ok', source: 'fmp-vix', data: { price: 18.4, changesPercentage: -1 } }),
+    collectFedFundsRateFn: async () => ({
+      status: 'ok',
+      source: 'fmp-fed-funds-rate',
+      data: { rate: 3.63, date: '2026-06-01', history: [] },
+    }),
     generateInsightFn: async () => ({ status: 'ok', source: 'claude', data: { text: 'insight' } }),
     formatDashboardHtmlFn: () => '<html>dashboard</html>',
     formatDashboardLinkMessageFn: () => 'dashboard link message',

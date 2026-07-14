@@ -19,7 +19,7 @@ function formatDashboardLinkMessage(sections, dashboardUrl) {
       : '✅ 모든 데이터가 정상적으로 수집되었습니다.';
 
   return [
-    `📊 ${today} 데일리 마켓 리포트가 준비됐습니다.`,
+    `📊 ${today} 마켓 브리핑이 준비됐습니다.`,
     '',
     withCacheBuster(dashboardUrl),
     '',
