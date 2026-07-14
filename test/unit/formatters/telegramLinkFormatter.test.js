@@ -26,6 +26,14 @@ test('appends a cache-busting query parameter so the link is unique per run', ()
   assert.match(message, /\?v=\d+/);
 });
 
+test('includes a short disclaimer line noting this is not investment advice', () => {
+  const sections = { usMarket: { status: 'ok' } };
+
+  const message = formatDashboardLinkMessage(sections, url);
+
+  assert.match(message, /투자 조언이 아닙니다/);
+});
+
 test('mentions the number of failed sections when some fail', () => {
   const sections = {
     usMarket: { status: 'ok' },

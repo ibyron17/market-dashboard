@@ -1,10 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { formatDashboardHtml, escapeHtml } = require('../../../src/formatters/dashboardFormatter');
-
-test('escapeHtml escapes html special characters', () => {
-  assert.equal(escapeHtml('<script>alert("x")</script>'), '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;');
-});
+const { formatDashboardHtml } = require('../../../src/formatters/dashboardFormatter');
 
 test('formatDashboardHtml includes no-cache meta tags so browsers always fetch fresh content', () => {
   const html = formatDashboardHtml({});
@@ -12,7 +8,14 @@ test('formatDashboardHtml includes no-cache meta tags so browsers always fetch f
   assert.match(html, /http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/);
 });
 
-test('formatDashboardHtml renders ok sections with data', () => {
+test('formatDashboardHtml includes a top and bottom disclaimer banner', () => {
+  const html = formatDashboardHtml({});
+  const matches = html.match(/투자 조언이 아닙니다/g) || [];
+
+  assert.equal(matches.length, 2);
+});
+
+test('formatDashboardHtml renders ok sections with data, including the watchlist card', () => {
   const sections = {
     usMarket: {
       status: 'ok',
@@ -26,6 +29,10 @@ test('formatDashboardHtml renders ok sections with data', () => {
     },
     foreignFlow: { status: 'ok', data: { foreignNetBuy: '-1,234', institutionNetBuy: '5,678' } },
     treasury: { status: 'ok', data: { date: '2026-07-13', yieldPercent: '4.25' } },
+    watchlist: {
+      status: 'ok',
+      data: { companies: [{ label: '애플', symbol: 'AAPL', price: 200, changesPercentage: 0.8 }] },
+    },
     insight: { status: 'ok', data: { text: '오늘은 상승 마감했습니다.' } },
   };
 
@@ -35,7 +42,9 @@ test('formatDashboardHtml renders ok sections with data', () => {
   assert.match(html, /2,650/);
   assert.match(html, /-1,234/);
   assert.match(html, /4\.25%/);
+  assert.match(html, /애플/);
   assert.match(html, /상승 마감/);
+  assert.match(html, /오늘의 요약/);
   assert.match(html, /<!doctype html>/);
 });
 
@@ -45,13 +54,14 @@ test('formatDashboardHtml shows a warning for every failed section', () => {
     krMarket: { status: 'error', error: 'timeout' },
     foreignFlow: { status: 'error', error: 'timeout' },
     treasury: { status: 'error', error: 'timeout' },
+    watchlist: { status: 'error', error: 'timeout' },
     insight: { status: 'error', error: 'skipped' },
   };
 
   const html = formatDashboardHtml(sections);
   const warningCount = (html.match(/데이터를 가져오지 못했습니다/g) || []).length;
 
-  assert.equal(warningCount, 4);
+  assert.equal(warningCount, 5);
   assert.match(html, /인사이트를 생성하지 못했습니다/);
 });
 

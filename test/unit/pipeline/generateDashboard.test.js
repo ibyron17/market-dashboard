@@ -22,6 +22,7 @@ function buildDeps(overrides = {}) {
         data: { foreignNetBuy: '100', institutionNetBuy: '200' },
       },
     }),
+    collectWatchlistFn: async () => ({ status: 'ok', source: 'fmp-watchlist', data: { companies: [] } }),
     generateInsightFn: async () => ({ status: 'ok', source: 'claude', data: { text: 'insight' } }),
     formatDashboardHtmlFn: () => '<html>dashboard</html>',
     formatDashboardLinkMessageFn: () => 'dashboard link message',

@@ -24,6 +24,7 @@ function formatDashboardLinkMessage(sections, dashboardUrl) {
     withCacheBuster(dashboardUrl),
     '',
     statusLine,
+    '📌 참고용 정보이며 투자 조언이 아닙니다.',
   ].join('\n');
 }
 
