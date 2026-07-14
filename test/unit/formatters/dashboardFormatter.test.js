@@ -6,6 +6,12 @@ test('escapeHtml escapes html special characters', () => {
   assert.equal(escapeHtml('<script>alert("x")</script>'), '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;');
 });
 
+test('formatDashboardHtml includes no-cache meta tags so browsers always fetch fresh content', () => {
+  const html = formatDashboardHtml({});
+
+  assert.match(html, /http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/);
+});
+
 test('formatDashboardHtml renders ok sections with data', () => {
   const sections = {
     usMarket: {
