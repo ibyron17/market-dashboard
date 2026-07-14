@@ -9,8 +9,16 @@ on:
 permissions:
   contents: read
 
+env:
+  # generate/notify 둘 다 config 검증에 5개 값을 모두 필요로 한다.
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+  FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+
 jobs:
-  generate-and-notify:
+  generate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -41,22 +49,23 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Generate dashboard and send Telegram link
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
-        run: node scripts/runLocal.js
+      - name: Generate dashboard
+        run: npm run generate:dashboard
 
-      - name: Upload dashboard artifact
+      - name: Upload dashboard artifact (for Pages)
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
+      - name: Upload pending Telegram message (for notify job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-message
+          path: artifacts/telegram-message.txt
+          retention-days: 1
+
   deploy:
-    needs: generate-and-notify
+    needs: generate
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -69,3 +78,29 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download pending Telegram message
+        uses: actions/download-artifact@v4
+        with:
+          name: telegram-message
+          path: artifacts
+
+      - name: Send Telegram notification
+        run: npm run notify:dashboard

@@ -108,27 +108,32 @@ npm run lint
 
 ## 동작 원리 (아키텍처)
 
+GitHub Actions 워크플로는 3개의 잡으로 나뉘어 **순서대로** 실행됩니다. 대시보드가 실제로 배포되기 전에 텔레그램 링크가 먼저 도착하는 일이 없도록, 알림 발송은 배포가 끝난 뒤 마지막에만 실행됩니다.
+
 ```
-GitHub Actions (매일 00:00 UTC = 09:00 KST 자동 실행)
+1) generate   (npm run generate:dashboard)
+   ├─ collectUsMarket        미국 지수(S&P500/나스닥종합/다우존스) ── FMP API
+   ├─ collectTreasuryYield   미국 10년물 국채금리                 ── Alpha Vantage API
+   ├─ scrapeKrMarket         코스피/코스닥 지수                    ── Playwright(네이버 증권)
+   ├─ scrapeForeignFlow      외국인·기관 순매수                    ── Playwright(네이버 증권)
+   │        (위 두 스크래핑은 브라우저 1개, 페이지 2개로 동시에 진행)
+   ├─ generateInsight        수집된 데이터를 Claude에게 넘겨 인사이트 생성
+   ├─ dist/index.html 생성                (대시보드 HTML, Pages 아티팩트로 업로드)
+   └─ artifacts/telegram-message.txt 생성 (아직 전송 X, 잡 간 전달용 아티팩트로 업로드)
         │
         ▼
-runDailyReport  ─── 전체 과정을 지휘하는 파이프라인
-   │
-   ├─ collectUsMarket        미국 지수(S&P500/Nasdaq/Dow) ── FMP API
-   ├─ collectTreasuryYield   미국 10년물 국채금리        ── Alpha Vantage API
-   ├─ scrapeKrMarket         코스피/코스닥 지수           ── Playwright(네이버 증권)
-   ├─ scrapeForeignFlow      외국인·기관 순매수           ── Playwright(네이버 증권)
-   │        (위 두 스크래핑은 브라우저 1개, 페이지 2개로 동시에 진행)
-   │
-   ├─ generateInsight            수집된 데이터를 Claude에게 넘겨 인사이트 생성
-   ├─ formatDashboardHtml         위 결과를 대시보드 HTML로 조립 → dist/index.html
-   ├─ (GitHub Actions) deploy-pages  dist/를 GitHub Pages로 배포
-   ├─ formatDashboardLinkMessage  대시보드 링크 + 상태 요약 텍스트 조립
-   └─ sendTelegramMessage         텔레그램으로 링크 알림 발송
+2) deploy     dist/를 GitHub Pages에 실제로 배포 (대시보드 URL이 이 시점에 살아남)
+        │
+        ▼
+3) notify     (npm run notify:dashboard)
+   └─ artifacts/telegram-message.txt를 읽어 텔레그램으로 발송
 ```
 
-**핵심 설계 원칙: 일부가 실패해도 전체가 멈추지 않습니다.**
+**핵심 설계 원칙 1 — 일부가 실패해도 전체가 멈추지 않습니다.**
 예를 들어 네이버 증권 스크래핑이 실패해도, 대시보드는 나머지 데이터(미국 증시·국채금리·Claude 인사이트)로 정상 생성되고 실패한 항목만 "⚠️ 데이터를 가져오지 못했습니다"로 표시됩니다. 텔레그램 알림에도 실패한 항목 수가 함께 표시됩니다.
+
+**핵심 설계 원칙 2 — 알림은 배포가 끝난 뒤에만 발송됩니다.**
+`generate` 잡은 텔레그램 메시지를 파일로만 써두고 절대 전송하지 않습니다. `deploy` 잡이 성공적으로 끝나야만 `notify` 잡이 실행되어 그 파일을 읽어 전송하므로, 링크를 받았을 때 항상 대시보드가 이미 열람 가능한 상태입니다.
 
 ---
 
@@ -172,11 +177,11 @@ src/
 ├── analysis/     # Claude API 인사이트 생성
 ├── formatters/   # 대시보드 HTML 포맷 + 텔레그램 링크 메시지 포맷
 ├── notifiers/    # 대시보드 파일 저장 + 텔레그램 발송
-├── pipeline/     # 전체 오케스트레이션 (runDailyReport)
+├── pipeline/     # generateDashboard(생성만) / sendDashboardNotification(발송만) — 두 단계로 분리
 └── utils/        # 로깅, 재시도, rate limiter, 공통 결과 래핑, 대시보드 URL 계산
 
 test/unit/        # 위 각 모듈에 대응하는 단위 테스트 (전부 mock, 실제 네트워크/파일시스템 호출 없음)
-scripts/          # 로컬 실행 진입점 (npm run report:local)
+scripts/          # runLocal.js(로컬용, 생성+발송 한번에) / generateDashboard.js / notifyDashboard.js (CI 각 잡의 진입점)
 dist/             # 빌드 산출물(대시보드 HTML) — git에는 커밋되지 않음, CI가 매번 새로 생성
 .github/workflows/  # 매일 자동 실행 + 대시보드 배포용 GitHub Actions 워크플로
 ```

@@ -1,7 +1,9 @@
+// ETF 티커(QQQ/DIA)와 콤마 구분 배치 조회는 FMP 무료 티어에서 프리미엄으로 막혀 있어
+// 원본 지수 심볼을 개별 호출로 사용한다.
 const US_INDEX_TICKERS = Object.freeze([
-  { symbol: 'SPY', label: 'S&P 500 (SPY)' },
-  { symbol: 'QQQ', label: 'Nasdaq 100 (QQQ)' },
-  { symbol: 'DIA', label: 'Dow Jones (DIA)' },
+  { symbol: '^GSPC', label: 'S&P 500' },
+  { symbol: '^IXIC', label: '나스닥 종합지수' },
+  { symbol: '^DJI', label: '다우존스 산업평균지수' },
 ]);
 
 const ALPHA_VANTAGE_RATE_LIMIT = Object.freeze({
@@ -31,6 +33,8 @@ const CLAUDE_MODEL = 'claude-sonnet-5';
 const CLAUDE_MAX_TOKENS = 800;
 
 const DASHBOARD_OUTPUT_PATH = 'dist/index.html';
+// Kept outside dist/ so it never gets published as part of the public Pages site.
+const TELEGRAM_MESSAGE_OUTPUT_PATH = 'artifacts/telegram-message.txt';
 
 module.exports = {
   US_INDEX_TICKERS,
@@ -44,4 +48,5 @@ module.exports = {
   CLAUDE_MODEL,
   CLAUDE_MAX_TOKENS,
   DASHBOARD_OUTPUT_PATH,
+  TELEGRAM_MESSAGE_OUTPUT_PATH,
 };
