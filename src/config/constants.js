@@ -30,6 +30,8 @@ const TELEGRAM_MAX_MESSAGE_LENGTH = 4000;
 const CLAUDE_MODEL = 'claude-sonnet-5';
 const CLAUDE_MAX_TOKENS = 800;
 
+const DASHBOARD_OUTPUT_PATH = 'dist/index.html';
+
 module.exports = {
   US_INDEX_TICKERS,
   ALPHA_VANTAGE_RATE_LIMIT,
@@ -41,4 +43,5 @@ module.exports = {
   TELEGRAM_MAX_MESSAGE_LENGTH,
   CLAUDE_MODEL,
   CLAUDE_MAX_TOKENS,
+  DASHBOARD_OUTPUT_PATH,
 };

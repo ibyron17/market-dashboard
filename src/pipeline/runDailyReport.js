@@ -4,10 +4,14 @@ const { scrapeForeignFlow } = require('../scrapers/foreignFlowScraper');
 const { collectUsMarket } = require('../collectors/usMarketCollector');
 const { collectTreasuryYield } = require('../collectors/treasuryCollector');
 const { generateInsight } = require('../analysis/claudeInsightGenerator');
-const { formatReport } = require('../formatters/reportFormatter');
+const { formatDashboardHtml } = require('../formatters/dashboardFormatter');
+const { formatDashboardLinkMessage } = require('../formatters/telegramLinkFormatter');
+const { writeDashboardFile } = require('../notifiers/dashboardFileWriter');
 const { sendTelegramMessage } = require('../notifiers/telegramNotifier');
 const { loadConfig } = require('../config/env');
 const { logger } = require('../utils/logger');
+const { resolveDashboardUrl } = require('../utils/dashboardUrl');
+const { DASHBOARD_OUTPUT_PATH } = require('../config/constants');
 
 async function collectKrData() {
   return withBrowser(async (browser) => {
@@ -31,8 +35,11 @@ async function runDailyReport(config = loadConfig(), deps = {}) {
     collectTreasuryYieldFn = collectTreasuryYield,
     collectKrDataFn = collectKrData,
     generateInsightFn = generateInsight,
-    formatReportFn = formatReport,
+    formatDashboardHtmlFn = formatDashboardHtml,
+    formatDashboardLinkMessageFn = formatDashboardLinkMessage,
+    writeDashboardFileFn = writeDashboardFile,
     sendTelegramMessageFn = sendTelegramMessage,
+    resolveDashboardUrlFn = resolveDashboardUrl,
   } = deps;
 
   try {
@@ -50,10 +57,16 @@ async function runDailyReport(config = loadConfig(), deps = {}) {
     };
 
     const insight = await generateInsightFn(sections, config);
-    const report = formatReportFn({ ...sections, insight });
+    const allSections = { ...sections, insight };
 
-    await sendTelegramMessageFn(report, config);
-    logger.info('Daily report sent successfully');
+    const html = formatDashboardHtmlFn(allSections);
+    await writeDashboardFileFn(html, DASHBOARD_OUTPUT_PATH);
+
+    const dashboardUrl = resolveDashboardUrlFn();
+    const message = formatDashboardLinkMessageFn(allSections, dashboardUrl);
+    await sendTelegramMessageFn(message, config);
+
+    logger.info('Daily dashboard published and Telegram link sent', { dashboardUrl });
   } catch (err) {
     logger.error('Daily report pipeline failed', { error: err.message });
     throw err;

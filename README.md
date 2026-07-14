@@ -1,28 +1,11 @@
 # market-dashboard
 
-매일 **오전 9시(한국 시간)**에 미국/국내 증시 현황, 외국인·기관 매매 동향, Claude AI 인사이트를 자동으로 수집해서 텔레그램으로 보내주는 개인용 자동화 봇입니다.
+매일 **오전 9시(한국 시간)**에 미국/국내 증시 현황, 외국인·기관 매매 동향, Claude AI 인사이트를 자동으로 수집해서 **웹 대시보드**로 만들고, 텔레그램으로는 그 대시보드 링크만 보내주는 개인용 자동화 시스템입니다.
 
-```
-📊 2026-07-14 데일리 마켓 리포트
+- 📊 **대시보드**: `https://<GitHub 계정>.github.io/market-dashboard/` — 매일 최신 리포트 1건으로 갱신
+- 📩 **텔레그램**: 매일 아침 "오늘의 대시보드가 준비됐습니다 + 링크" 형태의 짧은 알림만 수신
 
-🇺🇸 미국 증시
-- S&P 500 (SPY): 512.34 (+0.8%)
-- Nasdaq 100 (QQQ): 421.10 (+1.1%)
-- Dow Jones (DIA): 389.22 (+0.3%)
-
-🇰🇷 국내 증시
-- 코스피: 2,650.12 (+10.50)
-- 코스닥: 860.44 (-2.10)
-
-💱 외국인·기관 동향
-- 외국인 순매수: -1,234
-- 기관 순매수: 5,678
-
-🤖 Claude 인사이트
-오늘 미국 증시는 기술주 중심으로 상승했고 ...
-```
-
-한 번 배포해두면 매일 위와 같은 메시지가 자동으로 텔레그램에 도착합니다. 사람이 매일 실행할 필요가 없습니다 (GitHub Actions가 대신 실행).
+한 번 배포해두면 사람이 매일 실행할 필요 없이 GitHub Actions가 대신 실행하고, 대시보드를 새로 배포한 뒤 텔레그램으로 링크를 보냅니다.
 
 ---
 
@@ -31,7 +14,7 @@
 1. [빠른 시작 (5분)](#빠른-시작-5분)
 2. [API 키는 어디서 받나요?](#api-키는-어디서-받나요)
 3. [로컬에서 테스트해보기](#로컬에서-테스트해보기)
-4. [매일 자동 실행되게 배포하기 (GitHub Actions)](#매일-자동-실행되게-배포하기-github-actions)
+4. [매일 자동 실행되게 배포하기 (GitHub Actions + Pages)](#매일-자동-실행되게-배포하기-github-actions--pages)
 5. [동작 원리 (아키텍처)](#동작-원리-아키텍처)
 6. [자주 묻는 질문 / 문제 해결](#자주-묻는-질문--문제-해결)
 7. [보안 주의사항](#보안-주의사항)
@@ -60,11 +43,13 @@ FMP_API_KEY=              # Financial Modeling Prep API 키
 ```
 
 ```bash
-# 3. 실제로 한 번 실행해서 텔레그램으로 리포트가 오는지 확인
+# 3. 실제로 한 번 실행해서 대시보드가 생성되고 텔레그램으로 링크가 오는지 확인
 npm run report:local
 ```
 
-여기까지 되면 준비 끝입니다. 이제 [GitHub Actions 배포](#매일-자동-실행되게-배포하기-github-actions) 섹션으로 넘어가서 "매일 자동 실행"만 설정하면 됩니다.
+실행하면 `dist/index.html`이 로컬에 생성되고(브라우저로 열어서 바로 확인 가능), 텔레그램으로는 대시보드 링크 알림이 도착합니다.
+
+여기까지 되면 준비 끝입니다. 이제 [GitHub Actions + Pages 배포](#매일-자동-실행되게-배포하기-github-actions--pages) 섹션으로 넘어가서 "매일 자동 실행 + 대시보드 자동 배포"를 설정하면 됩니다.
 
 ---
 
@@ -98,22 +83,24 @@ npm test
 npm run lint
 ```
 
-`npm run report:local`을 실행하면 콘솔에 각 단계 로그가 출력되고, 성공하면 실제 텔레그램 채팅방에 메시지가 도착합니다.
+`npm run report:local`을 실행하면 콘솔에 각 단계 로그가 출력되고, 성공하면 `dist/index.html`이 생성되고 실제 텔레그램 채팅방에 링크 알림이 도착합니다.
 
 ---
 
-## 매일 자동 실행되게 배포하기 (GitHub Actions)
+## 매일 자동 실행되게 배포하기 (GitHub Actions + Pages)
 
-1. 이 저장소를 GitHub에 push 합니다.
-2. GitHub 저장소 페이지 → **Settings → Secrets and variables → Actions → New repository secret**
-3. 아래 5개를 하나씩 등록합니다 (이름은 정확히 일치해야 함).
+> **중요**: GitHub Pages는 **Public 저장소 + Free 플랜** 조합에서만 무료로 쓸 수 있습니다. 저장소가 private이라면 먼저 **Settings → 맨 아래 Danger Zone → Change visibility → Public**으로 전환해야 합니다. (대시보드 URL 자체는 로그인 없이 누구나 볼 수 있게 됩니다. 소스코드에는 시크릿 값이 없으므로 안전하지만, 내용 자체가 공개된다는 점은 유의하세요.)
+
+1. 이 저장소를 GitHub에 push 하고, 필요하다면 위처럼 Public으로 전환합니다.
+2. GitHub 저장소 페이지 → **Settings → Pages** → **Build and deployment → Source**를 **"GitHub Actions"**로 선택합니다. (한 번만 설정하면 됩니다)
+3. **Settings → Secrets and variables → Actions → New repository secret**에서 아래 5개를 등록합니다 (이름은 정확히 일치해야 함).
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
    - `ANTHROPIC_API_KEY`
    - `ALPHA_VANTAGE_API_KEY`
    - `FMP_API_KEY`
 4. **Actions** 탭 → `Daily Market Report` 워크플로 → **Run workflow** 버튼으로 수동 실행해서 정상 동작하는지 먼저 확인합니다.
-5. 이후로는 매일 **00:00 UTC (= 오전 9시 KST)**에 자동으로 실행됩니다.
+5. 실행이 끝나면 `https://<GitHub 계정>.github.io/market-dashboard/`에서 대시보드를 확인할 수 있고, 이후로는 매일 **00:00 UTC (= 오전 9시 KST)**에 자동으로 실행됩니다.
 
 > GitHub Actions cron은 트래픽이 몰리면 몇 분 정도 지연될 수 있습니다 (정확히 09:00:00에 오지 않을 수 있음).
 
@@ -133,13 +120,15 @@ runDailyReport  ─── 전체 과정을 지휘하는 파이프라인
    ├─ scrapeForeignFlow      외국인·기관 순매수           ── Playwright(네이버 증권)
    │        (위 두 스크래핑은 브라우저 1개, 페이지 2개로 동시에 진행)
    │
-   ├─ generateInsight        수집된 데이터를 Claude에게 넘겨 인사이트 생성
-   ├─ formatReport            위 결과를 텔레그램 메시지 형태로 조립
-   └─ sendTelegramMessage     텔레그램으로 최종 발송
+   ├─ generateInsight            수집된 데이터를 Claude에게 넘겨 인사이트 생성
+   ├─ formatDashboardHtml         위 결과를 대시보드 HTML로 조립 → dist/index.html
+   ├─ (GitHub Actions) deploy-pages  dist/를 GitHub Pages로 배포
+   ├─ formatDashboardLinkMessage  대시보드 링크 + 상태 요약 텍스트 조립
+   └─ sendTelegramMessage         텔레그램으로 링크 알림 발송
 ```
 
 **핵심 설계 원칙: 일부가 실패해도 전체가 멈추지 않습니다.**
-예를 들어 네이버 증권 스크래핑이 실패해도, 나머지(미국 증시·국채금리·Claude 인사이트)는 정상적으로 발송되고 실패한 항목만 "⚠️ 데이터를 가져오지 못했습니다"로 표시됩니다.
+예를 들어 네이버 증권 스크래핑이 실패해도, 대시보드는 나머지 데이터(미국 증시·국채금리·Claude 인사이트)로 정상 생성되고 실패한 항목만 "⚠️ 데이터를 가져오지 못했습니다"로 표시됩니다. 텔레그램 알림에도 실패한 항목 수가 함께 표시됩니다.
 
 ---
 
@@ -160,6 +149,9 @@ runDailyReport  ─── 전체 과정을 지휘하는 파이프라인
 **Q. GitHub Actions에서 Playwright 관련 에러가 나요.**
 워크플로가 자동으로 Chromium을 캐싱/설치하지만, 최초 실행 시에는 설치에 시간이 좀 걸립니다. `Actions` 탭에서 로그를 펼쳐 `Install Playwright` 스텝이 성공했는지 확인하세요.
 
+**Q. 대시보드 URL이 404가 떠요.**
+① 저장소가 Public인지, ② **Settings → Pages → Source**가 "GitHub Actions"로 설정되어 있는지, ③ 워크플로가 최소 1번 성공적으로 끝까지 실행됐는지(Actions 탭에서 `deploy` 잡까지 초록불) 확인하세요.
+
 ---
 
 ## 보안 주의사항
@@ -178,12 +170,13 @@ src/
 ├── collectors/   # Alpha Vantage / FMP REST API 클라이언트 + 수집기
 ├── scrapers/     # Playwright 기반 네이버 증권 스크래퍼
 ├── analysis/     # Claude API 인사이트 생성
-├── formatters/   # 텔레그램 메시지 포맷
-├── notifiers/    # 텔레그램 발송
+├── formatters/   # 대시보드 HTML 포맷 + 텔레그램 링크 메시지 포맷
+├── notifiers/    # 대시보드 파일 저장 + 텔레그램 발송
 ├── pipeline/     # 전체 오케스트레이션 (runDailyReport)
-└── utils/        # 로깅, 재시도, rate limiter, 공통 결과 래핑
+└── utils/        # 로깅, 재시도, rate limiter, 공통 결과 래핑, 대시보드 URL 계산
 
-test/unit/        # 위 각 모듈에 대응하는 단위 테스트 (전부 mock, 실제 네트워크 호출 없음)
+test/unit/        # 위 각 모듈에 대응하는 단위 테스트 (전부 mock, 실제 네트워크/파일시스템 호출 없음)
 scripts/          # 로컬 실행 진입점 (npm run report:local)
-.github/workflows/  # 매일 자동 실행되는 GitHub Actions 워크플로
+dist/             # 빌드 산출물(대시보드 HTML) — git에는 커밋되지 않음, CI가 매번 새로 생성
+.github/workflows/  # 매일 자동 실행 + 대시보드 배포용 GitHub Actions 워크플로
 ```
