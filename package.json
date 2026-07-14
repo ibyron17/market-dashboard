@@ -9,6 +9,8 @@
   },
   "scripts": {
     "report:local": "node scripts/runLocal.js",
+    "generate:dashboard": "node scripts/generateDashboard.js",
+    "notify:dashboard": "node scripts/notifyDashboard.js",
     "test": "node --test",
     "lint": "find src scripts -name '*.js' -exec node --check {} +"
   },

@@ -7,11 +7,10 @@ const { generateInsight } = require('../analysis/claudeInsightGenerator');
 const { formatDashboardHtml } = require('../formatters/dashboardFormatter');
 const { formatDashboardLinkMessage } = require('../formatters/telegramLinkFormatter');
 const { writeDashboardFile } = require('../notifiers/dashboardFileWriter');
-const { sendTelegramMessage } = require('../notifiers/telegramNotifier');
 const { loadConfig } = require('../config/env');
 const { logger } = require('../utils/logger');
 const { resolveDashboardUrl } = require('../utils/dashboardUrl');
-const { DASHBOARD_OUTPUT_PATH } = require('../config/constants');
+const { DASHBOARD_OUTPUT_PATH, TELEGRAM_MESSAGE_OUTPUT_PATH } = require('../config/constants');
 
 async function collectKrData() {
   return withBrowser(async (browser) => {
@@ -29,7 +28,11 @@ async function collectKrData() {
   });
 }
 
-async function runDailyReport(config = loadConfig(), deps = {}) {
+// Only builds the dashboard HTML and the pending Telegram message — it does NOT
+// send the Telegram notification. That happens in a later step/job, after the
+// dashboard has actually been deployed (see sendDashboardNotification.js), so
+// the link is never sent out before the page it points to is live.
+async function generateDashboard(config = loadConfig(), deps = {}) {
   const {
     collectUsMarketFn = collectUsMarket,
     collectTreasuryYieldFn = collectTreasuryYield,
@@ -38,7 +41,6 @@ async function runDailyReport(config = loadConfig(), deps = {}) {
     formatDashboardHtmlFn = formatDashboardHtml,
     formatDashboardLinkMessageFn = formatDashboardLinkMessage,
     writeDashboardFileFn = writeDashboardFile,
-    sendTelegramMessageFn = sendTelegramMessage,
     resolveDashboardUrlFn = resolveDashboardUrl,
   } = deps;
 
@@ -64,13 +66,15 @@ async function runDailyReport(config = loadConfig(), deps = {}) {
 
     const dashboardUrl = resolveDashboardUrlFn();
     const message = formatDashboardLinkMessageFn(allSections, dashboardUrl);
-    await sendTelegramMessageFn(message, config);
+    await writeDashboardFileFn(message, TELEGRAM_MESSAGE_OUTPUT_PATH);
 
-    logger.info('Daily dashboard published and Telegram link sent', { dashboardUrl });
+    logger.info('Dashboard generated', { dashboardUrl });
+
+    return { dashboardUrl, message };
   } catch (err) {
-    logger.error('Daily report pipeline failed', { error: err.message });
+    logger.error('Dashboard generation failed', { error: err.message });
     throw err;
   }
 }
 
-module.exports = { runDailyReport };
+module.exports = { generateDashboard };

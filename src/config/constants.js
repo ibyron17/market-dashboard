@@ -33,6 +33,8 @@ const CLAUDE_MODEL = 'claude-sonnet-5';
 const CLAUDE_MAX_TOKENS = 800;
 
 const DASHBOARD_OUTPUT_PATH = 'dist/index.html';
+// Kept outside dist/ so it never gets published as part of the public Pages site.
+const TELEGRAM_MESSAGE_OUTPUT_PATH = 'artifacts/telegram-message.txt';
 
 module.exports = {
   US_INDEX_TICKERS,
@@ -46,4 +48,5 @@ module.exports = {
   CLAUDE_MODEL,
   CLAUDE_MAX_TOKENS,
   DASHBOARD_OUTPUT_PATH,
+  TELEGRAM_MESSAGE_OUTPUT_PATH,
 };

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { runDailyReport } = require('../../../src/pipeline/runDailyReport');
+const { generateDashboard } = require('../../../src/pipeline/generateDashboard');
 
 const config = {
   telegramBotToken: 'token',
@@ -26,29 +26,29 @@ function buildDeps(overrides = {}) {
     formatDashboardHtmlFn: () => '<html>dashboard</html>',
     formatDashboardLinkMessageFn: () => 'dashboard link message',
     writeDashboardFileFn: async () => {},
-    sendTelegramMessageFn: async () => {},
     resolveDashboardUrlFn: () => 'https://example.github.io/market-dashboard/',
     ...overrides,
   };
 }
 
-test('completes and publishes the dashboard even when some collectors fail', async () => {
-  let writtenHtml = null;
-  let sentMessage = null;
+test('writes the dashboard html and the pending telegram message, but never sends it', async () => {
+  const writes = [];
 
   const deps = buildDeps({
-    writeDashboardFileFn: async (html) => {
-      writtenHtml = html;
-    },
-    sendTelegramMessageFn: async (text) => {
-      sentMessage = text;
+    writeDashboardFileFn: async (content, filePath) => {
+      writes.push({ content, filePath });
     },
   });
 
-  await runDailyReport(config, deps);
+  const result = await generateDashboard(config, deps);
 
-  assert.equal(writtenHtml, '<html>dashboard</html>');
-  assert.equal(sentMessage, 'dashboard link message');
+  assert.equal(writes.length, 2);
+  assert.equal(writes[0].content, '<html>dashboard</html>');
+  assert.equal(writes[0].filePath, 'dist/index.html');
+  assert.equal(writes[1].content, 'dashboard link message');
+  assert.equal(writes[1].filePath, 'artifacts/telegram-message.txt');
+  assert.equal(result.dashboardUrl, 'https://example.github.io/market-dashboard/');
+  assert.equal(result.message, 'dashboard link message');
 });
 
 test('propagates the error when writing the dashboard file fails', async () => {
@@ -58,15 +58,5 @@ test('propagates the error when writing the dashboard file fails', async () => {
     },
   });
 
-  await assert.rejects(() => runDailyReport(config, deps), /disk full/);
-});
-
-test('propagates the error when telegram sending itself fails', async () => {
-  const deps = buildDeps({
-    sendTelegramMessageFn: async () => {
-      throw new Error('telegram unreachable');
-    },
-  });
-
-  await assert.rejects(() => runDailyReport(config, deps), /telegram unreachable/);
+  await assert.rejects(() => generateDashboard(config, deps), /disk full/);
 });
