@@ -26,9 +26,12 @@ test('formatDashboardHtml renders ok sections with data, including the watchlist
     vix: { status: 'ok', data: { price: 18.4, changesPercentage: -2.1 } },
     krMarket: {
       status: 'ok',
-      data: { kospi: { value: '2,650', change: '+10' }, kosdaq: { value: '860', change: '-2' } },
+      data: {
+        kospi: { value: '2,650', change: '+10.50', changePercent: '+0.40%' },
+        kosdaq: { value: '860', change: '-2.10', changePercent: '-0.24%' },
+      },
     },
-    foreignFlow: { status: 'ok', data: { foreignNetBuy: '-1,234', institutionNetBuy: '5,678' } },
+    foreignFlow: { status: 'ok', data: { foreignNetBuy: '-1,234', institutionNetBuy: '+5,678' } },
     fedFunds: { status: 'ok', data: { rate: 3.63, date: '2026-06-01', history: [] } },
     treasury: { status: 'ok', data: { date: '2026-07-13', yieldPercent: '4.25' } },
     watchlist: {
@@ -38,7 +41,10 @@ test('formatDashboardHtml renders ok sections with data, including the watchlist
           {
             key: 'semiconductor',
             label: '반도체',
-            companies: [{ label: '엔비디아', symbol: 'NVDA', price: 130, changesPercentage: 2.1 }],
+            companies: [
+              { label: '삼성전자', symbol: '005930', price: '279,500', changesPercentage: 6.27, currency: 'KRW' },
+              { label: '엔비디아', symbol: 'NVDA', price: 130, changesPercentage: 2.1, currency: 'USD' },
+            ],
           },
         ],
       },
@@ -51,12 +57,13 @@ test('formatDashboardHtml renders ok sections with data, including the watchlist
   assert.match(html, /S&amp;P 500/);
   assert.match(html, /18\.4/);
   assert.match(html, /2,650/);
-  assert.match(html, /-1,234/);
+  assert.match(html, /-1,234억 원/);
   assert.match(html, /3\.63%/);
   assert.match(html, /4\.25%/);
   assert.match(html, /엔비디아/);
+  assert.match(html, /삼성전자/);
   assert.match(html, /상승 마감/);
-  assert.match(html, /오늘의 요약/);
+  assert.ok(!html.includes('오늘의 요약'));
   assert.match(html, /<!doctype html>/);
 });
 
@@ -77,6 +84,14 @@ test('formatDashboardHtml shows a warning for every failed section', () => {
 
   assert.equal(warningCount, 7);
   assert.match(html, /인사이트를 생성하지 못했습니다/);
+});
+
+test('formatDashboardHtml shows the generated-at time in human-readable KST, not ISO', () => {
+  const html = formatDashboardHtml({});
+
+  assert.match(html, /생성 시각: \d{4}년 \d{1,2}월 \d{1,2}일 (오전|오후) \d{1,2}:\d{2}/);
+  assert.ok(!html.includes('한국 시간'));
+  assert.ok(!/생성 시각: \d{4}-\d{2}-\d{2}T/.test(html));
 });
 
 test('formatDashboardHtml uses a light theme and loads Chart.js for the trend chart', () => {
@@ -113,7 +128,6 @@ test('formatDashboardHtml places the AI insight card above the rest of the dashb
 
   const html = formatDashboardHtml(sections);
 
-  assert.ok(html.indexOf('AI 인사이트') < html.indexOf('오늘의 요약'));
   assert.ok(html.indexOf('AI 인사이트') < html.indexOf('미국 증시'));
 });
 

@@ -2,23 +2,26 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { collectFedFundsRate } = require('../../../src/collectors/fedFundsCollector');
 
-const config = { fmpApiKey: 'test-key' };
+const config = { alphaVantageApiKey: 'test-key' };
 
 test('returns ok status with the latest rate and chronological history', async () => {
-  const fakeFetchFmp = async (path, params) => {
-    assert.equal(path, '/economic-indicators');
-    assert.equal(params.name, 'federalFunds');
-    return [
-      { name: 'federalFunds', date: '2026-06-01', value: 3.63 },
-      { name: 'federalFunds', date: '2026-05-01', value: 3.63 },
-      { name: 'federalFunds', date: '2026-04-01', value: 3.64 },
-    ];
+  const fakeFetchAlphaVantage = async (params) => {
+    assert.equal(params.function, 'FEDERAL_FUNDS_RATE');
+    assert.equal(params.interval, 'monthly');
+    return {
+      name: 'Effective Federal Funds Rate',
+      data: [
+        { date: '2026-06-01', value: '3.63' },
+        { date: '2026-05-01', value: '3.63' },
+        { date: '2026-04-01', value: '3.64' },
+      ],
+    };
   };
 
-  const result = await collectFedFundsRate(config, { fetchFmp: fakeFetchFmp });
+  const result = await collectFedFundsRate(config, { fetchAlphaVantage: fakeFetchAlphaVantage });
 
   assert.equal(result.status, 'ok');
-  assert.equal(result.source, 'fmp-fed-funds-rate');
+  assert.equal(result.source, 'alpha-vantage-fed-funds-rate');
   assert.equal(result.data.rate, 3.63);
   assert.equal(result.data.date, '2026-06-01');
   assert.deepEqual(result.data.history, [
@@ -29,20 +32,20 @@ test('returns ok status with the latest rate and chronological history', async (
 });
 
 test('returns error status without throwing when fetch fails', async () => {
-  const fakeFetchFmp = async () => {
-    throw new Error('fmp down');
+  const fakeFetchAlphaVantage = async () => {
+    throw new Error('alpha vantage down');
   };
 
-  const result = await collectFedFundsRate(config, { fetchFmp: fakeFetchFmp });
+  const result = await collectFedFundsRate(config, { fetchAlphaVantage: fakeFetchAlphaVantage });
 
   assert.equal(result.status, 'error');
-  assert.equal(result.error, 'fmp down');
+  assert.equal(result.error, 'alpha vantage down');
 });
 
 test('returns nulls when the response is empty', async () => {
-  const fakeFetchFmp = async () => [];
+  const fakeFetchAlphaVantage = async () => ({});
 
-  const result = await collectFedFundsRate(config, { fetchFmp: fakeFetchFmp });
+  const result = await collectFedFundsRate(config, { fetchAlphaVantage: fakeFetchAlphaVantage });
 
   assert.equal(result.status, 'ok');
   assert.equal(result.data.rate, null);

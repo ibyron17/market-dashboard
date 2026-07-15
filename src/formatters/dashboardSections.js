@@ -1,4 +1,4 @@
-const { escapeHtml, changeClass, changeLabel } = require('../utils/htmlEscape');
+const { escapeHtml, changeClass, changeLabel, formatPercent } = require('../utils/htmlEscape');
 const { GLOSSARY } = require('./glossary');
 
 function renderCard(title, hint, bodyHtml) {
@@ -19,9 +19,20 @@ function renderStatusCard(title, hint, section, renderBody) {
 
 // A real <table> (rather than a flex/space-between list) so that the label/value/change
 // columns line up vertically across rows regardless of how long each row's text is.
-function renderTable(rows) {
+// headers: 각 열의 숫자가 무엇을 뜻하는지 알려주는 컬럼 제목(초보자 배려).
+function renderTable(rows, headers = []) {
+  const headHtml =
+    headers.length > 0
+      ? `
+          <thead>
+            <tr>
+              ${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}
+            </tr>
+          </thead>`
+      : '';
+
   return `
-        <table class="data-table">
+        <table class="data-table">${headHtml}
           <tbody>
             ${rows
               .map(
@@ -36,12 +47,13 @@ function renderTable(rows) {
 }
 
 function indexRow(label, price, changesPercentage) {
+  const percentText = formatPercent(changesPercentage);
   return [
     { className: 'label', html: escapeHtml(label) },
     { className: 'value', html: price != null ? escapeHtml(price) : '데이터 없음' },
     {
       className: `change ${changeClass(changesPercentage)}`,
-      html: `${escapeHtml(changeLabel(changesPercentage))}${changesPercentage != null ? ` (${escapeHtml(changesPercentage)}%)` : ''}`,
+      html: `${escapeHtml(changeLabel(changesPercentage))}${percentText ? ` (${escapeHtml(percentText)})` : ''}`,
     },
   ];
 }
@@ -53,52 +65,16 @@ function renderDisclaimer() {
       </div>`;
 }
 
-function countUpDown(values) {
-  return values.reduce(
-    (acc, value) => {
-      const cls = changeClass(value);
-      if (cls === 'up') return { up: acc.up + 1, down: acc.down };
-      if (cls === 'down') return { up: acc.up, down: acc.down + 1 };
-      return acc;
-    },
-    { up: 0, down: 0 },
-  );
-}
-
-function renderSummary(sections) {
-  const values = [];
-  if (sections.usMarket && sections.usMarket.status === 'ok') {
-    values.push(...sections.usMarket.data.indices.map((index) => index.changesPercentage));
-  }
-  if (sections.krMarket && sections.krMarket.status === 'ok') {
-    values.push(sections.krMarket.data.kospi.change, sections.krMarket.data.kosdaq.change);
-  }
-
-  const { up, down } = countUpDown(values);
-  let mood = '오늘 수집된 지수 데이터가 부족해 전반적인 분위기를 요약하기 어려워요.';
-  if (up > down) {
-    mood = `오늘은 상승한 지수(${up}개)가 하락한 지수(${down}개)보다 많았어요. 전반적으로 좋은 흐름이었어요.`;
-  } else if (down > up) {
-    mood = `오늘은 하락한 지수(${down}개)가 상승한 지수(${up}개)보다 많았어요. 전반적으로 조심스러운 흐름이었어요.`;
-  } else if (up + down > 0) {
-    mood = '오늘은 상승과 하락이 비슷하게 나타난, 방향성이 뚜렷하지 않은 날이었어요.';
-  }
-
-  return `
-      <section class="card summary">
-        <h2>📌 오늘의 요약</h2>
-        <p>${escapeHtml(mood)}</p>
-        <p class="hint">처음이신가요? 맨 위 AI 인사이트로 오늘 분위기를 먼저 파악한 뒤, 이 순서로 근거를 확인해보세요: ① 오늘의 요약 → ② 미국·국내 증시 → ③ 외국인·기관 동향 → ④ 관심 기업</p>
-      </section>`;
-}
-
 function renderUsMarket(section) {
   return renderStatusCard(
     '🇺🇸 미국 증시',
     GLOSSARY.usMarket,
     section,
     (data) =>
-      renderTable(data.indices.map((index) => indexRow(index.label, index.price, index.changesPercentage))),
+      renderTable(
+        data.indices.map((index) => indexRow(index.label, index.price, index.changesPercentage)),
+        ['지수 이름', '현재 지수(포인트)', '전일 대비 등락'],
+      ),
   );
 }
 
@@ -119,10 +95,17 @@ function renderVix(section) {
         <p class="treasury-value">${data.price != null ? escapeHtml(data.price) : '데이터 없음'}</p>
         <p class="change ${changeClass(data.changesPercentage)}">
           ${escapeHtml(changeLabel(data.changesPercentage))}
-          ${data.changesPercentage != null ? `(${escapeHtml(data.changesPercentage)}%)` : ''}
+          ${formatPercent(data.changesPercentage) ? `(어제보다 ${escapeHtml(formatPercent(data.changesPercentage))})` : ''}
         </p>
         ${data.price != null ? `<p class="hint" style="margin:0.5rem 0 0">${escapeHtml(vixInterpretation(data.price))}</p>` : ''}`,
   );
+}
+
+// "2026-06-01" 같은 날짜를 "2026년 6월 기준"으로 바꿔, 월 단위 통계라는 점이 드러나게 한다.
+function formatMonthLabel(dateStr) {
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})/);
+  if (!match) return escapeHtml(dateStr);
+  return `${match[1]}년 ${Number(match[2])}월 기준`;
 }
 
 function renderFedFundsRate(section) {
@@ -132,10 +115,11 @@ function renderFedFundsRate(section) {
     section,
     (data) => `
         <p class="treasury-value">${data.rate != null ? `${escapeHtml(data.rate)}%` : '데이터 없음'}</p>
-        <p class="treasury-date">${data.date ? escapeHtml(data.date) : ''}</p>
+        <p class="treasury-date">${data.date ? formatMonthLabel(data.date) : ''}</p>
         ${
           Array.isArray(data.history) && data.history.length > 1
             ? `<div class="rate-chart-wrap"><canvas id="fedFundsChart" height="90"></canvas></div>
+        <p class="hint" style="margin:0.5rem 0 0">위 차트는 최근 12개월 기준금리의 흐름이에요. 선이 내려가면 금리를 내리는(완화) 방향, 올라가면 올리는(긴축) 방향이에요. 기준금리는 월 평균으로 집계·발표되기 때문에 최신 값도 한두 달 전 기준이에요.</p>
         <script type="application/json" id="fedFundsChartData">${JSON.stringify(data.history).replace(/</g, '\\u003c')}</script>`
             : ''
         }`,
@@ -148,25 +132,24 @@ function renderKrMarket(section) {
     GLOSSARY.krMarket,
     section,
     (data) =>
-      renderTable([
-        [
-          { className: 'label', html: '코스피' },
-          { className: 'value', html: escapeHtml(data.kospi.value) },
-          {
-            className: `change ${changeClass(data.kospi.change)}`,
-            html: `${escapeHtml(changeLabel(data.kospi.change))} (${escapeHtml(data.kospi.change)})`,
-          },
-        ],
-        [
-          { className: 'label', html: '코스닥' },
-          { className: 'value', html: escapeHtml(data.kosdaq.value) },
-          {
-            className: `change ${changeClass(data.kosdaq.change)}`,
-            html: `${escapeHtml(changeLabel(data.kosdaq.change))} (${escapeHtml(data.kosdaq.change)})`,
-          },
-        ],
-      ]),
+      renderTable(
+        [krIndexRow('코스피', data.kospi), krIndexRow('코스닥', data.kosdaq)],
+        ['지수 이름', '현재 지수(포인트)', '전일 대비 등락'],
+      ),
   );
+}
+
+// 네이버 스크레이퍼가 주는 { value, change: '+427.58', changePercent: '+6.24%' } 형태를 한 행으로.
+function krIndexRow(label, index) {
+  const detail = [index.change, index.changePercent].filter(Boolean).join(' / ');
+  return [
+    { className: 'label', html: escapeHtml(label) },
+    { className: 'value', html: index.value != null ? escapeHtml(index.value) : '데이터 없음' },
+    {
+      className: `change ${changeClass(index.change)}`,
+      html: `${escapeHtml(changeLabel(index.change))}${detail ? ` (${escapeHtml(detail)})` : ''}`,
+    },
+  ];
 }
 
 function renderForeignFlow(section) {
@@ -175,34 +158,46 @@ function renderForeignFlow(section) {
     GLOSSARY.foreignFlow,
     section,
     (data) =>
-      renderTable([
+      renderTable(
         [
-          { className: 'label', html: '외국인 순매수' },
-          {
-            className: `value ${changeClass(data.foreignNetBuy)}`,
-            html: data.foreignNetBuy ? escapeHtml(data.foreignNetBuy) : '데이터 없음',
-          },
+          [
+            { className: 'label', html: '외국인 순매수' },
+            {
+              className: `value ${changeClass(data.foreignNetBuy)}`,
+              html: data.foreignNetBuy ? `${escapeHtml(data.foreignNetBuy)}억 원` : '데이터 없음',
+            },
+          ],
+          [
+            { className: 'label', html: '기관 순매수' },
+            {
+              className: `value ${changeClass(data.institutionNetBuy)}`,
+              html: data.institutionNetBuy
+                ? `${escapeHtml(data.institutionNetBuy)}억 원`
+                : '데이터 없음',
+            },
+          ],
         ],
-        [
-          { className: 'label', html: '기관 순매수' },
-          {
-            className: `value ${changeClass(data.institutionNetBuy)}`,
-            html: data.institutionNetBuy ? escapeHtml(data.institutionNetBuy) : '데이터 없음',
-          },
-        ],
-      ]),
+        ['투자자', '오늘 순매수 금액'],
+      ),
   );
 }
 
 function renderTreasury(section) {
   return renderStatusCard(
-    '💵 10년물 국채금리',
+    '💵 미국 10년 만기 국채금리',
     GLOSSARY.treasury,
     section,
     (data) => `
         <p class="treasury-value">${data.yieldPercent != null ? `${escapeHtml(data.yieldPercent)}%` : '데이터 없음'}</p>
         <p class="treasury-date">${data.date ? escapeHtml(data.date) : ''}</p>`,
   );
+}
+
+// 국내 기업은 원화("279,500원"), 해외 기업은 달러("95.87달러")로 단위를 붙여준다.
+function formatCompanyPrice(company) {
+  if (company.price == null) return null;
+  const unit = company.currency === 'KRW' ? '원' : '달러';
+  return `${company.price}${unit}`;
 }
 
 function renderWatchlist(section) {
@@ -225,8 +220,9 @@ function renderWatchlist(section) {
         <div class="tab-panel" id="watchlist-${escapeHtml(theme.key)}" role="tabpanel" ${i === 0 ? '' : 'hidden'}>
           ${renderTable(
             theme.companies.map((company) =>
-              indexRow(`${company.label} (${company.symbol})`, company.price, company.changesPercentage),
+              indexRow(`${company.label} (${company.symbol})`, formatCompanyPrice(company), company.changesPercentage),
             ),
+            ['기업 (종목코드)', '현재 주가', '전일 대비 등락'],
           )}
         </div>`,
           )
@@ -246,13 +242,11 @@ function renderInsight(section) {
       <section class="card insight">
         <h2>🤖 AI 인사이트</h2>
         <p>${escapeHtml(section.data.text)}</p>
-        <p class="hint">※ 위 내용은 데이터 기반 참고 정보이며 투자 조언이 아닙니다.</p>
       </section>`;
 }
 
 module.exports = {
   renderDisclaimer,
-  renderSummary,
   renderUsMarket,
   renderVix,
   renderKrMarket,

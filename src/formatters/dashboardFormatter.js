@@ -1,7 +1,6 @@
 const { escapeHtml } = require('../utils/htmlEscape');
 const {
   renderDisclaimer,
-  renderSummary,
   renderUsMarket,
   renderVix,
   renderKrMarket,
@@ -12,9 +11,28 @@ const {
   renderInsight,
 } = require('./dashboardSections');
 
+// 생성 시각을 ISO 문자열(2026-07-15T02:06:38.021Z) 대신
+// "2026년 7월 15일 오전 11:06"처럼 한국 시간 기준으로 읽히는 형태로 만든다.
+function formatKstDateTime(date) {
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function kstDateString(date) {
+  // en-CA locale gives YYYY-MM-DD; UTC 날짜가 아니라 한국 날짜 기준으로 제목을 만든다.
+  return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+}
+
 function formatDashboardHtml(sections) {
-  const today = new Date().toISOString().slice(0, 10);
-  const generatedAt = new Date().toISOString();
+  const now = new Date();
+  const today = kstDateString(now);
+  const generatedAt = formatKstDateTime(now);
 
   return `<!doctype html>
 <html lang="ko">
@@ -59,8 +77,17 @@ function formatDashboardHtml(sections) {
     font-size: 0.9rem;
     line-height: 1.5;
   }
-  .summary p:first-of-type { font-size: 1.05rem; font-weight: 600; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  .data-table th {
+    color: #999;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: right;
+    padding: 0 0 0.35rem 0.75rem;
+    border-bottom: 1px solid #eaeaea;
+    white-space: nowrap;
+  }
+  .data-table th:first-child { text-align: left; padding-left: 0; }
   .data-table td { padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
   .data-table tr:last-child td { border-bottom: none; }
   .data-table .label { color: #777; text-align: left; }
@@ -94,7 +121,6 @@ function formatDashboardHtml(sections) {
   <h1>📊 ${escapeHtml(today)} 마켓 브리핑</h1>
   <p class="generated-at">생성 시각: ${escapeHtml(generatedAt)}</p>
   ${renderInsight(sections.insight)}
-  ${renderSummary(sections)}
   ${renderUsMarket(sections.usMarket)}
   ${renderVix(sections.vix)}
   ${renderKrMarket(sections.krMarket)}
