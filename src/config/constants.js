@@ -6,36 +6,63 @@ const US_INDEX_TICKERS = Object.freeze([
   { symbol: '^DJI', label: '다우존스 산업평균지수' },
 ]);
 
-// AI 산업과 맞닿아 있는 3개 테마(반도체/전력/배터리)의 대표 기업.
-// 개별 /stable/quote 호출로 조회 가능함이 이미 검증된 심볼만 사용 (US_INDEX_TICKERS와 동일 패턴).
-// 배치(콤마 구분) 조회는 FMP 무료 티어에서 프리미엄으로 막혀 있으므로 반드시 개별 호출을 유지한다.
+// 테마별 대표 기업: 국내 3곳 + 해외 2곳.
+// market: 'kr' → 네이버 시세 API(종목코드 6자리, 무료·무제한), 'us' → Alpha Vantage
+// GLOBAL_QUOTE(일 25회 한도 안에서 사용 — 해외 기업 수를 늘릴 때는 한도 계산 필수).
 const WATCHLIST_THEMES = Object.freeze([
   {
     key: 'semiconductor',
     label: '반도체',
     tickers: [
-      { symbol: 'NVDA', label: '엔비디아' },
-      { symbol: 'TSM', label: 'TSMC' },
-      { symbol: 'AVGO', label: '브로드컴' },
-      { symbol: 'AMD', label: 'AMD' },
+      { symbol: '005930', label: '삼성전자', market: 'kr' },
+      { symbol: '000660', label: 'SK하이닉스', market: 'kr' },
+      { symbol: '042700', label: '한미반도체', market: 'kr' },
+      { symbol: 'NVDA', label: '엔비디아', market: 'us' },
+      { symbol: 'TSM', label: 'TSMC', market: 'us' },
     ],
   },
   {
     key: 'power',
     label: '전력',
     tickers: [
-      { symbol: 'NEE', label: '넥스트에라 에너지' },
-      { symbol: 'GEV', label: 'GE 버노바' },
-      { symbol: 'VST', label: '비스트라' },
+      { symbol: '034020', label: '두산에너빌리티', market: 'kr' },
+      { symbol: '267260', label: 'HD현대일렉트릭', market: 'kr' },
+      { symbol: '010120', label: 'LS일렉트릭', market: 'kr' },
+      { symbol: 'GEV', label: 'GE 버노바', market: 'us' },
+      { symbol: 'VST', label: '비스트라', market: 'us' },
     ],
   },
   {
     key: 'battery',
     label: '배터리',
     tickers: [
-      { symbol: 'TSLA', label: '테슬라' },
-      { symbol: 'ALB', label: '앨버말' },
-      { symbol: 'ENPH', label: '엔페이즈 에너지' },
+      { symbol: '373220', label: 'LG에너지솔루션', market: 'kr' },
+      { symbol: '006400', label: '삼성SDI', market: 'kr' },
+      { symbol: '247540', label: '에코프로비엠', market: 'kr' },
+      { symbol: 'TSLA', label: '테슬라', market: 'us' },
+      { symbol: 'ALB', label: '앨버말', market: 'us' },
+    ],
+  },
+  {
+    key: 'construction',
+    label: '건설',
+    tickers: [
+      { symbol: '028260', label: '삼성물산', market: 'kr' },
+      { symbol: '000720', label: '현대건설', market: 'kr' },
+      { symbol: '006360', label: 'GS건설', market: 'kr' },
+      { symbol: 'CAT', label: '캐터필러', market: 'us' },
+      { symbol: 'DHI', label: 'D.R. 호턴', market: 'us' },
+    ],
+  },
+  {
+    key: 'leisure',
+    label: '레저',
+    tickers: [
+      { symbol: '039130', label: '하나투어', market: 'kr' },
+      { symbol: '008770', label: '호텔신라', market: 'kr' },
+      { symbol: '034230', label: '파라다이스', market: 'kr' },
+      { symbol: 'DIS', label: '월트 디즈니', market: 'us' },
+      { symbol: 'BKNG', label: '부킹홀딩스', market: 'us' },
     ],
   },
 ]);
@@ -47,9 +74,13 @@ const ALPHA_VANTAGE_RATE_LIMIT = Object.freeze({
 
 const VIX_TICKER = Object.freeze({ symbol: '^VIX', label: 'VIX (변동성지수)' });
 
-// FMP /economic-indicators?name=federalFunds 는 월별 값을 최신순으로 반환한다.
+// Alpha Vantage FEDERAL_FUNDS_RATE(monthly)는 월별 값을 최신순으로 반환한다.
+// (FMP 무료 키의 /economic-indicators는 수개월 지연된 값을 돌려줘서 AV로 전환함.)
 // 초보자용 추세 미니 차트에는 최근 12개월치만 있으면 충분하다.
 const FED_FUNDS_HISTORY_LIMIT = 12;
+
+// 국내 개별 종목 시세 JSON API (키 불필요). {code} 자리에 6자리 종목코드가 들어간다.
+const NAVER_STOCK_QUOTE_URL = 'https://polling.finance.naver.com/api/realtime/domestic/stock';
 
 const NAVER_MARKET_URL = 'https://finance.naver.com/sise/';
 // 코스피 "투자자별 매매동향" 페이지. 표 안에서 "외국인"/"기관계" 행을 텍스트로 찾아 파싱한다.
@@ -60,7 +91,9 @@ const NAVER_SELECTORS = Object.freeze({
   kospiChange: '#KOSPI_change',
   kosdaqValue: '#KOSDAQ_now',
   kosdaqChange: '#KOSDAQ_change',
-  investorTrendTable: 'table.type_1',
+  // 2026-07 기준 투자자별 매매동향은 <table.type_1>이 아니라 dl.lst_kos_info의
+  // <dd> 항목("외국인 +23,031억" 형태, 단위: 억 원)으로 렌더링된다.
+  investorTrendList: 'dl.lst_kos_info dd',
 });
 
 const SCRAPE_TIMEOUT_MS = 15000;
@@ -82,6 +115,7 @@ module.exports = {
   VIX_TICKER,
   FED_FUNDS_HISTORY_LIMIT,
   ALPHA_VANTAGE_RATE_LIMIT,
+  NAVER_STOCK_QUOTE_URL,
   NAVER_MARKET_URL,
   NAVER_FOREIGN_FLOW_URL,
   NAVER_SELECTORS,

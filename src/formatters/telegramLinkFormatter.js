@@ -11,7 +11,8 @@ function withCacheBuster(url) {
 }
 
 function formatDashboardLinkMessage(sections, dashboardUrl) {
-  const today = new Date().toISOString().slice(0, 10);
+  // UTC가 아니라 한국 날짜 기준으로 제목을 만든다 (en-CA locale = YYYY-MM-DD).
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
   const failedCount = countFailedSections(sections);
   const statusLine =
     failedCount > 0

@@ -30,11 +30,11 @@ test('buildInsightPrompt includes data for ok sections and "데이터 없음" fo
   assert.match(prompt, /국내 증시: 데이터 없음/);
 });
 
-test('buildInsightPrompt forbids buy/sell recommendations and requires the disclaimer sentence', () => {
+test('buildInsightPrompt forbids buy/sell recommendations and redundant disclaimer sentences', () => {
   const prompt = buildInsightPrompt({ usMarket: { status: 'ok', data: {} } });
 
   assert.match(prompt, /매수\/매도 추천/);
-  assert.match(prompt, /참고용 정보이며 투자 판단과 책임은 본인에게 있습니다/);
+  assert.match(prompt, /면책 문구는 덧붙이지 말 것/);
 });
 
 test('buildInsightPrompt includes VIX and Fed funds rate data when present', () => {
