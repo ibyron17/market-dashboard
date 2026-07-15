@@ -70,6 +70,9 @@ const WATCHLIST_THEMES = Object.freeze([
 const ALPHA_VANTAGE_RATE_LIMIT = Object.freeze({
   maxPerWindow: 5,
   windowMs: 60 * 1000,
+  // 무료 키는 "초당 1회" 버스트 제한도 있다. 수집기 여러 개가 동시에 시작해도
+  // 요청이 같은 순간에 몰리지 않도록 호출 간 최소 간격을 둔다.
+  minGapMs: 2000,
 });
 
 const VIX_TICKER = Object.freeze({ symbol: '^VIX', label: 'VIX (변동성지수)' });
