@@ -3,7 +3,8 @@ name: Daily Market Report
 on:
   schedule:
     # 22:00 UTC = 다음날 07:00 KST (한국은 서머타임 없음)
-    - cron: '0 22 * * *'
+    # 요일 0-4(일~목, UTC) = KST 기준 월~금 아침. 주말(토·일 아침)에는 발행하지 않는다.
+    - cron: '0 22 * * 0-4'
   workflow_dispatch: {}
 
 permissions:

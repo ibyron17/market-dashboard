@@ -18,8 +18,8 @@ test('changeClass returns up/down/empty based on numeric sign', () => {
 });
 
 test('changeLabel returns a beginner-friendly label', () => {
-  assert.equal(changeLabel('1.2'), '▲ 상승');
-  assert.equal(changeLabel('-0.5'), '▼ 하락');
+  assert.equal(changeLabel('1.2'), '▲');
+  assert.equal(changeLabel('-0.5'), '▼');
   assert.equal(changeLabel('0'), '보합(변동 없음)');
   assert.equal(changeLabel(null), '데이터 없음');
 });
