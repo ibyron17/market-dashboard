@@ -23,7 +23,7 @@ test('renderUsMarket shows a beginner-friendly hint and interpretation label', (
   };
   const html = renderUsMarket(section);
   assert.match(html, /대표 주가지수/);
-  assert.match(html, /▲ 상승/);
+  assert.match(html, /▲/);
 });
 
 test('renderUsMarket labels what the numbers mean and rounds percentages to 2 decimals', () => {
@@ -51,8 +51,8 @@ test('renderKrMarket shows signed change with percent from the scraper fields', 
   };
   const html = renderKrMarket(section);
   assert.match(html, /7,284\.41/);
-  assert.match(html, /▲ 상승 \(\+427\.58 \/ \+6\.24%\)/);
-  assert.match(html, /▼ 하락 \(-2\.10 \/ -0\.24%\)/);
+  assert.match(html, /▲ \(\+427\.58 \/ \+6\.24%\)/);
+  assert.match(html, /▼ \(-2\.10 \/ -0\.24%\)/);
 });
 
 test('renderForeignFlow appends the 억 원 unit so the amount is understandable', () => {

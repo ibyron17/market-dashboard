@@ -18,8 +18,8 @@ function changeLabel(value) {
   if (value == null) return '데이터 없음';
   const numeric = Number(String(value).replace(/,/g, ''));
   if (Number.isNaN(numeric)) return '데이터 없음';
-  if (numeric > 0) return '▲ 상승';
-  if (numeric < 0) return '▼ 하락';
+  if (numeric > 0) return '▲';
+  if (numeric < 0) return '▼';
   return '보합(변동 없음)';
 }
 
