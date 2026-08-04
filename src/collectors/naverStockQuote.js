@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { withRetry } = require('../utils/retry');
+const { applyDirectionSign } = require('./naverPriceSign');
 const { NAVER_STOCK_QUOTE_URL, SCRAPE_USER_AGENT } = require('../config/constants');
 
 // 네이버 시세 API 원본 호출. API 키가 필요 없고 종목 수 제한도 없다.
@@ -13,21 +14,19 @@ async function fetchNaverStockQuote(code, { timeoutMs = 10000 } = {}) {
   });
 }
 
-// fluctuationsRatio("6.27")에는 부호가 없고 방향은 compareToPreviousPrice.name
-// (RISING/FALLING/EVEN/UPPER_LIMIT/LOWER_LIMIT)으로만 온다. 방향에서 부호를 정한다.
+/**
+ * 네이버 시세 API 응답을 파싱해 종목 정보 반환.
+ * @param {Object} body - API 응답 JSON
+ * @param {Object} ticker - 종목 객체 {symbol, label, market}
+ * @returns {Object} {label, symbol, price, changesPercentage, currency}
+ */
 function parseNaverStockQuote(body, ticker) {
   const data = Array.isArray(body?.datas) && body.datas.length > 0 ? body.datas[0] : null;
 
   let changesPercentage = null;
-  if (data && data.fluctuationsRatio != null && String(data.fluctuationsRatio).trim() !== '') {
-    const ratio = Number(String(data.fluctuationsRatio).replace(/,/g, ''));
-    if (Number.isFinite(ratio)) {
-      const direction = data.compareToPreviousPrice ? data.compareToPreviousPrice.name : '';
-      const magnitude = Math.abs(ratio);
-      changesPercentage =
-        direction === 'FALLING' || direction === 'LOWER_LIMIT' ? -magnitude : magnitude;
-      if (direction === 'EVEN') changesPercentage = 0;
-    }
+  if (data && data.fluctuationsRatio != null) {
+    const direction = data.compareToPreviousPrice ? data.compareToPreviousPrice.name : null;
+    changesPercentage = applyDirectionSign(data.fluctuationsRatio, direction);
   }
 
   return {

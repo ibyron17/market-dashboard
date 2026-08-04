@@ -7,3 +7,6 @@ test-results/
 .DS_Store
 dist/
 artifacts/
+
+# 로컬 확인용 테스트 대시보드 (커밋 대상 아님)
+테스트-대시보드-*.html

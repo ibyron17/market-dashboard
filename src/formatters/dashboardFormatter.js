@@ -10,6 +10,42 @@ const {
   renderWatchlist,
   renderInsight,
 } = require('./dashboardSections');
+const {
+  renderIndustryTrends,
+  renderStockDetailsTable,
+  renderConsensusTable,
+  renderMarketCapRanking,
+  renderMacroIndicators,
+  renderNewsAndFilings,
+} = require('./dashboardSectionsExtra');
+const { GLOSSARY } = require('./glossary');
+
+// 카드를 4개 그룹으로 묶어 첫 화면 정보량을 억제한다. <details>는 자바스크립트
+// 없이 동작하므로 정적 HTML 구조를 깨지 않는다.
+function renderGroup(title, bodyHtml, { open = false } = {}) {
+  return `
+  <details class="group"${open ? ' open' : ''}>
+    <summary class="group-summary">${escapeHtml(title)}</summary>
+    ${bodyHtml}
+  </details>`;
+}
+
+// 심화 지표는 초보자가 매일 봐야 하는 정보는 아니라서 기본으로 접어 둔다.
+function renderStockDetailsCard(stockDetails) {
+  return `
+      <section class="card">
+        <h2>🔍 관심 기업 심화 정보</h2>
+        <p class="hint">${escapeHtml(GLOSSARY.stockDetails)}</p>
+        <details>
+          <summary>밸류에이션·수급·추세 보기</summary>
+          ${renderStockDetailsTable(stockDetails)}
+        </details>
+        <details>
+          <summary>증권사 컨센서스 보기</summary>
+          ${renderConsensusTable(stockDetails)}
+        </details>
+      </section>`;
+}
 
 // 생성 시각을 ISO 문자열(2026-07-15T02:06:38.021Z) 대신
 // "2026년 7월 15일 오전 11:06"처럼 한국 시간 기준으로 읽히는 형태로 만든다.
@@ -66,6 +102,7 @@ function formatDashboardHtml(sections) {
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   }
   .card h2 { margin: 0 0 0.5rem; font-size: 1.05rem; color: #1a1a1a; }
+  .card h3 { margin: 0; font-size: 0.95rem; color: #1a1a1a; }
   .hint { color: #777; font-size: 0.85rem; margin: 0 0 0.75rem; line-height: 1.5; }
   .disclaimer {
     background: #fff8e6;
@@ -114,6 +151,21 @@ function formatDashboardHtml(sections) {
     cursor: pointer;
   }
   .tab-btn.active { color: #1a1a1a; border-bottom-color: #2a4d9b; }
+  details { margin-top: 0.75rem; }
+  summary { cursor: pointer; font-weight: 600; color: #1a1a1a; padding: 0.5rem 0; }
+  summary:hover { color: #2a4d9b; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-scroll .data-table { min-width: max-content; }
+  .table-scroll .data-table td, .table-scroll .data-table th { white-space: nowrap; }
+  .group { margin-top: 1.5rem; }
+  .group-summary {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #2a4d9b;
+    padding: 0.6rem 0.2rem;
+    border-bottom: 2px solid #e6e6e6;
+  }
+  .group[open] > .group-summary { margin-bottom: 0.5rem; }
 </style>
 </head>
 <body>
@@ -121,13 +173,32 @@ function formatDashboardHtml(sections) {
   <h1>📊 ${escapeHtml(today)} 마켓 브리핑</h1>
   <p class="generated-at">생성 시각: ${escapeHtml(generatedAt)}</p>
   ${renderInsight(sections.insight)}
-  ${renderUsMarket(sections.usMarket)}
+  ${renderGroup(
+    '① 오늘의 시장',
+    `${renderUsMarket(sections.usMarket)}
   ${renderVix(sections.vix)}
   ${renderKrMarket(sections.krMarket)}
-  ${renderForeignFlow(sections.foreignFlow)}
-  ${renderFedFundsRate(sections.fedFunds)}
+  ${renderIndustryTrends(sections.industryTrends)}`,
+    { open: true },
+  )}
+  ${renderGroup(
+    '② 관심 기업',
+    `${renderWatchlist(sections.watchlist)}
+  ${renderStockDetailsCard(sections.stockDetails)}`,
+    { open: true },
+  )}
+  ${renderGroup(
+    '③ 수급과 시장 전체',
+    `${renderForeignFlow(sections.foreignFlow)}
+  ${renderMarketCapRanking(sections.marketList)}`,
+  )}
+  ${renderGroup(
+    '④ 거시 경제와 뉴스',
+    `${renderFedFundsRate(sections.fedFunds)}
   ${renderTreasury(sections.treasury)}
-  ${renderWatchlist(sections.watchlist)}
+  ${renderMacroIndicators(sections.macroIndicators)}
+  ${renderNewsAndFilings(sections.stockNews, sections.secFilings)}`,
+  )}
   ${renderDisclaimer()}
 </main>
 <script>

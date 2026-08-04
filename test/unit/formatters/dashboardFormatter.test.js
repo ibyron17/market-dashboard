@@ -76,13 +76,16 @@ test('formatDashboardHtml shows a warning for every failed section', () => {
     fedFunds: { status: 'error', error: 'timeout' },
     treasury: { status: 'error', error: 'timeout' },
     watchlist: { status: 'error', error: 'timeout' },
+    industryTrends: { status: 'error', error: 'timeout' },
+    marketList: { status: 'error', error: 'timeout' },
+    macroIndicators: { status: 'error', error: 'timeout' },
     insight: { status: 'error', error: 'skipped' },
   };
 
   const html = formatDashboardHtml(sections);
   const warningCount = (html.match(/데이터를 가져오지 못했습니다/g) || []).length;
 
-  assert.equal(warningCount, 7);
+  assert.equal(warningCount, 10);
   assert.match(html, /인사이트를 생성하지 못했습니다/);
 });
 

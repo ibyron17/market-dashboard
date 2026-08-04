@@ -112,6 +112,66 @@ const DASHBOARD_OUTPUT_PATH = 'dist/index.html';
 // Kept outside dist/ so it never gets published as part of the public Pages site.
 const TELEGRAM_MESSAGE_OUTPUT_PATH = 'artifacts/telegram-message.txt';
 
+// 신규 네이버 API 엔드포인트 (비공개 API)
+const NAVER_INTEGRATION_QUOTE_URL = 'https://m.stock.naver.com/api/stock/{code}/integration';
+const NAVER_CHART_HISTORY_URL = 'https://fchart.stock.naver.com/sise.nhn';
+const NAVER_MARKET_LIST_URL = 'https://m.stock.naver.com/api/stocks/marketValue/{market}';
+const NAVER_INDUSTRY_TRENDS_URL = 'https://m.stock.naver.com/api/stocks/industry';
+const NAVER_STOCK_NEWS_URL = 'https://m.stock.naver.com/api/news/stock/{code}';
+
+// 네이버 API 공유 rate limit (minGapMs: 500ms로 로테이션 대응)
+const NAVER_RATE_LIMIT = Object.freeze({
+  maxPerWindow: 10,
+  windowMs: 1000,
+  minGapMs: 500,
+});
+
+// FRED API 설정 및 시리즈 정의
+const FRED_BASE_URL = 'https://api.stlouisfed.org/fred/series/observations';
+const FRED_SERIES = Object.freeze({
+  T10Y2Y: {
+    id: 'T10Y2Y',
+    label: '장단기금리차 (10Y-2Y)',
+    unit: '%',
+  },
+  UNRATE: {
+    id: 'UNRATE',
+    label: '실업률',
+    unit: '%',
+  },
+  CPILFESL: {
+    id: 'CPILFESL',
+    label: '근원CPI',
+    unit: '%',
+  },
+  ICSA: {
+    id: 'ICSA',
+    label: '신규실업수당청구',
+    unit: '천명',
+  },
+  DTWEXBGS: {
+    id: 'DTWEXBGS',
+    label: '달러인덱스',
+    unit: '지수',
+  },
+});
+
+// SEC EDGAR API 설정
+const SEC_BASE_URL = 'https://data.sec.gov';
+const SEC_TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json';
+const SEC_USER_AGENT = 'market-dashboard (ibyron17@gmail.com)';
+
+// 차트 히스토리 및 기술 분석 설정
+const CHART_HISTORY_DAYS = 240;
+const MOVING_AVERAGE_PERIOD = 200;
+
+// 신규 수집 범위 설정
+const TOP_NEWS_SYMBOLS_COUNT = 5;
+const TOP_SEC_SYMBOLS_COUNT = 5;
+const NEWS_PAGE_SIZE = 3;
+const MARKET_LIST_PAGE_SIZE = 10;
+const SEC_FILINGS_LIMIT = 3;
+
 module.exports = {
   US_INDEX_TICKERS,
   WATCHLIST_THEMES,
@@ -122,6 +182,24 @@ module.exports = {
   NAVER_MARKET_URL,
   NAVER_FOREIGN_FLOW_URL,
   NAVER_SELECTORS,
+  NAVER_INTEGRATION_QUOTE_URL,
+  NAVER_CHART_HISTORY_URL,
+  NAVER_MARKET_LIST_URL,
+  NAVER_INDUSTRY_TRENDS_URL,
+  NAVER_STOCK_NEWS_URL,
+  NAVER_RATE_LIMIT,
+  FRED_BASE_URL,
+  FRED_SERIES,
+  SEC_BASE_URL,
+  SEC_TICKERS_URL,
+  SEC_USER_AGENT,
+  CHART_HISTORY_DAYS,
+  MOVING_AVERAGE_PERIOD,
+  TOP_NEWS_SYMBOLS_COUNT,
+  TOP_SEC_SYMBOLS_COUNT,
+  NEWS_PAGE_SIZE,
+  MARKET_LIST_PAGE_SIZE,
+  SEC_FILINGS_LIMIT,
   SCRAPE_TIMEOUT_MS,
   SCRAPE_USER_AGENT,
   TELEGRAM_MAX_MESSAGE_LENGTH,
