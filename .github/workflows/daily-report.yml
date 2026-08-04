@@ -17,6 +17,8 @@ env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
   FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+  # 선택 키. 없으면 FRED 거시지표 카드만 안내 문구로 대체되고 나머지는 정상 동작한다.
+  FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
 
 jobs:
   generate:

@@ -69,13 +69,13 @@ function parseFredObservations(observations, seriesInfo) {
 /**
  * 다중 FRED 시리즈 조회 및 파싱.
  * API 키가 없으면 configured: false를 반환하고 인디케이터는 빈 배열.
- * @param {Object} config - {FRED_API_KEY?, FRED_SERIES}
+ * @param {Object} config - {fredApiKey?} — loadConfig()가 돌려주는 설정 객체
  * @param {Object} deps - 의존성 {timeoutMs?}
  * @returns {Promise<Object>} {configured: boolean, indicators: [...]}
  */
 async function collectFredMacroIndicators(config = {}, deps = {}) {
   // API 키 체크
-  if (!config.FRED_API_KEY) {
+  if (!config.fredApiKey) {
     return {
       status: 'ok',
       source: 'fredMacroIndicators',
@@ -93,7 +93,7 @@ async function collectFredMacroIndicators(config = {}, deps = {}) {
 
     // 모든 시리즈 병렬 조회
     const promises = seriesIds.map((id) =>
-      fetchFredSeries(id, config.FRED_API_KEY, { limit: 10, timeoutMs: deps.timeoutMs || 10000 })
+      fetchFredSeries(id, config.fredApiKey, { limit: 10, timeoutMs: deps.timeoutMs || 10000 })
         .then((observations) => {
           const parsed = parseFredObservations(observations, FRED_SERIES[id]);
           if (parsed) indicators.push(parsed);
