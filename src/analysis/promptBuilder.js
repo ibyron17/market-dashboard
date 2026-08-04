@@ -9,6 +9,94 @@ function describeSection(title, section) {
   return `${title}: ${JSON.stringify(section.data)}`;
 }
 
+function summarizeIndustryTrends(section) {
+  if (!section || section.status !== 'ok' || !section.data) {
+    return '[업종별 등락]: 데이터 없음';
+  }
+
+  const { topRising, topFalling } = section.data;
+  const rising = topRising ? topRising.slice(0, 3).map((i) => `${i.name}(${i.changeRate}%)`).join(', ') : '';
+  const falling = topFalling ? topFalling.slice(0, 2).map((i) => `${i.name}(${i.changeRate}%)`).join(', ') : '';
+
+  return `[업종별 등락]: 상승 ${rising} / 하락 ${falling}`;
+}
+
+function summarizeStockDetails(stockDetails) {
+  if (!Array.isArray(stockDetails) || stockDetails.length === 0) {
+    return '[종목 심화]: 데이터 없음';
+  }
+
+  const deviations = stockDetails
+    .filter((item) => item.trend && item.trend.status === 'ok' && item.trend.data.trend)
+    .map((item) => ({
+      label: item.label,
+      deviation: Math.abs(item.trend.data.trend.deviationPercent || 0),
+      deviationPercent: item.trend.data.trend.deviationPercent,
+      isAbove: item.trend.data.trend.isAbove,
+    }))
+    .sort((a, b) => b.deviation - a.deviation)
+    .slice(0, 6);
+
+  if (deviations.length === 0) {
+    return '[종목 심화]: 데이터 없음';
+  }
+
+  const summary = deviations.map((d) => `${d.label}(${d.isAbove ? '▲' : '▼'}${d.deviationPercent}%)`).join(', ');
+  return `[종목 심화 (200일선 대비)]: ${summary}`;
+}
+
+function summarizeMacroIndicators(section) {
+  if (!section || section.status !== 'ok' || !section.data || !section.data.indicators) {
+    return '[FRED 거시지표]: 데이터 없음';
+  }
+
+  const { indicators } = section.data;
+  const summary = indicators.slice(0, 5).map((i) => `${i.label}: ${i.latestValue}`).join(', ');
+  return `[FRED 거시지표]: ${summary}`;
+}
+
+function summarizeNews(stockNews) {
+  if (!stockNews || typeof stockNews !== 'object') {
+    return '[뉴스]: 데이터 없음';
+  }
+
+  const headlines = [];
+  Object.values(stockNews).forEach((newsItem) => {
+    if (newsItem && newsItem.status === 'ok' && newsItem.data && newsItem.data.articles) {
+      newsItem.data.articles.slice(0, 2).forEach((a) => {
+        headlines.push(a.title);
+      });
+    }
+  });
+
+  if (headlines.length === 0) {
+    return '[뉴스]: 데이터 없음';
+  }
+
+  return `[뉴스 헤드라인]: ${headlines.slice(0, 5).join(' | ')}`;
+}
+
+function summarizeSecFilings(secFilings) {
+  if (!secFilings || typeof secFilings !== 'object') {
+    return '[SEC 공시]: 데이터 없음';
+  }
+
+  const filings = [];
+  Object.values(secFilings).forEach((filingItem) => {
+    if (filingItem && filingItem.status === 'ok' && filingItem.data && filingItem.data.filings) {
+      filingItem.data.filings.slice(0, 2).forEach((f) => {
+        filings.push(`${f.symbol}:${f.form}(${f.filingDate})`);
+      });
+    }
+  });
+
+  if (filings.length === 0) {
+    return '[SEC 공시]: 데이터 없음';
+  }
+
+  return `[SEC 공시]: ${filings.slice(0, 5).join(', ')}`;
+}
+
 function buildInsightPrompt(sections) {
   const lines = [
     describeSection('미국 증시', sections.usMarket),
@@ -18,6 +106,11 @@ function buildInsightPrompt(sections) {
     describeSection('미국 기준금리', sections.fedFunds),
     describeSection('10년물 국채금리', sections.treasury),
     describeSection('관심 기업 동향', sections.watchlist),
+    summarizeIndustryTrends(sections.industryTrends),
+    summarizeStockDetails(sections.stockDetails),
+    summarizeMacroIndicators(sections.macroIndicators),
+    summarizeNews(sections.stockNews),
+    summarizeSecFilings(sections.secFilings),
   ];
 
   return [

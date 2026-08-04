@@ -33,4 +33,20 @@ function formatPercent(value) {
   return `${sign}${numeric.toFixed(2)}%`;
 }
 
-module.exports = { escapeHtml, changeClass, changeLabel, formatPercent };
+/**
+ * HTML 엔티티를 원본 문자로 디코딩한다. 네이버 뉴스 API 응답 처리용.
+ * &quot; &amp; &lt; &gt; &#39; 처리.
+ * @param {string} text - HTML 엔티티 포함 문자열
+ * @returns {string} 디코딩된 문자열
+ */
+function decodeHtmlEntities(text) {
+  if (!text) return text;
+  return String(text)
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+module.exports = { escapeHtml, changeClass, changeLabel, formatPercent, decodeHtmlEntities };
