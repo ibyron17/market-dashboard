@@ -259,15 +259,18 @@ test('renderNewsAndFilings decodes HTML entities in titles', () => {
   assert(html.includes('&amp;') || html.includes('&'));
 });
 
-test('renderNewsAndFilings maps SEC form labels correctly', () => {
+// 수집기는 티커를 종목 단위(data.symbol)에만 담고 개별 공시에는 넣지 않는다.
+// 픽스처가 이 구조를 따라야 티커 열이 비는 회귀를 잡을 수 있다.
+test('renderNewsAndFilings maps SEC form labels and shows which ticker filed', () => {
   const secFilings = {
     NVDA: {
       status: 'ok',
       data: {
+        symbol: 'NVDA',
         filings: [
-          { symbol: 'NVDA', form: '10-K', filingDate: '2026-01-01' },
-          { symbol: 'NVDA', form: '8-K', filingDate: '2026-08-01' },
-          { symbol: 'NVDA', form: '4', filingDate: '2026-07-15' },
+          { form: '10-K', filingDate: '2026-01-01' },
+          { form: '8-K', filingDate: '2026-08-01' },
+          { form: '4', filingDate: '2026-07-15' },
         ],
       },
     },
@@ -277,4 +280,5 @@ test('renderNewsAndFilings maps SEC form labels correctly', () => {
   assert.match(html, /연간보고서/);
   assert.match(html, /수시공시/);
   assert.match(html, /내부자거래/);
+  assert.match(html, /NVDA/); // 어느 기업 공시인지 알 수 있어야 한다
 });

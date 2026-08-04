@@ -283,7 +283,10 @@ function renderNewsAndFilings(stockNews, secFilings) {
     const filings = [];
     Object.values(secFilings).forEach((filingItem) => {
       if (filingItem && filingItem.status === 'ok' && filingItem.data && filingItem.data.filings) {
-        filings.push(...filingItem.data.filings.slice(0, 3));
+        // 티커는 종목 단위(data.symbol)에만 있고 개별 공시에는 없다.
+        // 평탄화하면서 실어주지 않으면 표의 티커 열이 빈칸으로 나온다.
+        const { symbol } = filingItem.data;
+        filings.push(...filingItem.data.filings.slice(0, 3).map((filing) => ({ ...filing, symbol })));
       }
     });
 
