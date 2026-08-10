@@ -31,6 +31,13 @@ async function generateInsight(sections, config, deps = {}) {
       .join('\n')
       .trim();
 
+    // 호출이 성공해도 본문이 비어 올 수 있다(예: max_tokens를 사고 토큰이 모두 소진해
+    // 답변이 잘린 경우). 이걸 성공으로 넘기면 대시보드에 빈 카드가 조용히 발행되므로
+    // 실패로 처리하고, 원인을 로그로 구분할 수 있게 stop_reason을 함께 남긴다.
+    if (!text) {
+      throw new Error(`Claude returned no text (stop_reason: ${response.stop_reason})`);
+    }
+
     return { text };
   });
 }
