@@ -106,7 +106,10 @@ const SCRAPE_USER_AGENT =
 const TELEGRAM_MAX_MESSAGE_LENGTH = 4000;
 
 const CLAUDE_MODEL = 'claude-sonnet-5';
-const CLAUDE_MAX_TOKENS = 800;
+// Sonnet 5는 thinking 파라미터를 생략하면 적응형 사고가 켜지고, max_tokens는 사고와
+// 답변을 합쳐서 제한한다. 인사이트 본문(한국어 4~6문장)만 계산한 800으로는 모델이
+// 조금만 생각해도 본문이 통째로 잘려 빈 인사이트가 나온다. 사고 몫을 넉넉히 둔다.
+const CLAUDE_MAX_TOKENS = 4000;
 
 const DASHBOARD_OUTPUT_PATH = 'dist/index.html';
 // Kept outside dist/ so it never gets published as part of the public Pages site.
